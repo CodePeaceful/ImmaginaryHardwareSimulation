@@ -62,4 +62,16 @@ jumpNotZero:
     0x4068  |   registerID3bit
                 7               followed by Immediate
 
+jumpNegative:
+    0x4070  |   registerID3bit
+                7               followed by Immediate
+
+jumpNotNegative:
+    0x4078  |   registerID3bit
+                7               followed by Immediate
+
+jumpOnInterrupt:
+    0x4080  |   registerID3bit
+                7               followed by Immediate
+
 

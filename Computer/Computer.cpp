@@ -10,9 +10,12 @@ constexpr uint16_t activePidAdress = 0x7ffb;
 constexpr uint16_t userMemoryMapStart = 0x4000;
 constexpr uint8_t carryFlag = 0b0000'0001;
 constexpr uint8_t zeroFlag = 0b0000'0010;
+constexpr uint8_t interruptFlag = 0b0000'0100;
 constexpr uint8_t compareGreaterFlag = 0b0000'1000;
 constexpr uint8_t compareEqualFlag = 0b0001'0000;
 constexpr uint8_t kernelModeFlag = 0b0010'0000;
+constexpr uint8_t overflowFloag = 0b0100'0000;
+constexpr uint8_t negativeFlag = 0b1000'0000;
 
 #define LOAD_MEMORY(target, adress) \
 if (kernelModeFlag & flags) { \
@@ -145,7 +148,7 @@ void Computer::handleJump() {
         jumpToSubroutineImmediate();
         return;
     }
-    static std::array<std::function<bool(uint8_t)>, 11> jumpReasons{
+    static std::array<std::function<bool(uint8_t)>, 14> jumpReasons{
         // jump Always
         [](uint8_t flags) {return true; },
         // jump Greater
@@ -167,7 +170,13 @@ void Computer::handleJump() {
         // jumpZero
         [](uint8_t flags) {return zeroFlag & flags; },
         // jumpNotZero
-        [](uint8_t flags) {return !(zeroFlag & flags); }
+        [](uint8_t flags) {return !(zeroFlag & flags); },
+        // jumpNegative
+        [](uint8_t flags) {return negativeFlag & flags; },
+        // jumpNotNegative
+        [](uint8_t flags) {return !(negativeFlag & flags); },
+        // jumpOnInterrupt
+        [](uint8_t flags) {return interruptFlag & flags; }
     };
 
     if (currentInstruction[1] / 8 >= 2 && currentInstruction[1] / 8 < jumpReasons.size() + 2) {
@@ -584,5 +593,3 @@ void Computer::setF32RegisterById(uint8_t id, float value) {
         break;
     }
 }
-
-
