@@ -1,0 +1,144 @@
+compare:
+    8bit:
+        0x80    isHighByte  registerID3bit  isHighByte  registerID3bit
+                                                        7               followed by Immediate value high or low depending on setting
+    16bit:
+        0x8100  | registerID3bit << 3 | registerID3bit
+                                        7           followed by Immediate value
+    32bit int:
+        0x8140  | registerID2bit << 2 | registerID2bit
+                                        3           followed by Immediate value
+    32bit float:
+        0x8150  | registerID2bit << 2 | registerID2bit
+                                        3           followed by Immediate value
+
+add:
+    8bit:   // long instruction because to many Registers
+        0x9600  |   registerID4bit      followed by     registerID4bit  registerID4bit      followed by ignored 8bits
+                                                                        7 || 15     followed by Immediate value high or low depending on setting
+    16bit:
+        0x9000  |   registerID3bit << 6 | registerID3bit << 3 | registerID3bit
+                                                                7           followed by Immediate value
+    32bit int:
+        0x9200  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+    32bit float 
+        0x9400  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+
+sub:
+    8bit:   // long instruction because to many Registers
+        0xb600  |   registerID4bit      followed by     registerID4bit  registerID4bit      followed by ignored 8bits
+                                                                        7 || 15     followed by Immediate value high or low depending on setting
+    16bit:
+        0xb000  |   registerID3bit << 6 | registerID3bit << 3 | registerID3bit
+                                                                7           followed by Immediate value
+    32bit int:
+        0xb200  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+    32bit float 
+        0xb400  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+
+mul:
+    8bit:   // long instruction because to many Registers
+        0xa600  |   registerID4bit      followed by     registerID4bit  registerID4bit      followed by ignored 8bits
+                                                                        7 || 15     followed by Immediate value high or low depending on setting
+    16bit:
+        0xa000  |   registerID3bit << 6 | registerID3bit << 3 | registerID3bit
+                                                                7           followed by Immediate value
+    32bit int:
+        0xa200  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+    32bit float 
+        0xa400  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+or:
+    8bit:   // long instruction because to many Registers
+        0xc600  |   registerID4bit      followed by     registerID4bit  registerID4bit      followed by ignored 8bits
+                                                                        7 || 15     followed by Immediate value high or low depending on setting
+    16bit:
+        0xc000  |   registerID3bit << 6 | registerID3bit << 3 | registerID3bit
+                                                                7           followed by Immediate value
+    32bit int:
+        0xc200  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+    32bit float 
+        0xc400  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+
+and:
+    8bit:   // long instruction because to many Registers
+        0xd600  |   registerID4bit      followed by     registerID4bit  registerID4bit      followed by ignored 8bits
+                                                                        7 || 15     followed by Immediate value high or low depending on setting
+    16bit:
+        0xd000  |   registerID3bit << 6 | registerID3bit << 3 | registerID3bit
+                                                                7           followed by Immediate value
+    32bit int:
+        0xd200  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+    32bit float 
+        0xd400  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+
+xor:
+    8bit:   // long instruction because to many Registers
+        0xe600  |   registerID4bit      followed by     registerID4bit  registerID4bit      followed by ignored 8bits
+                                                                        7 || 15     followed by Immediate value high or low depending on setting
+    16bit:
+        0xe000  |   registerID3bit << 6 | registerID3bit << 3 | registerID3bit
+                                                                7           followed by Immediate value
+    32bit int:
+        0xe200  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+    32bit float 
+        0xe400  |   registerID2bit << 4 | registerID2bit << 2 | registerID2bit
+                                                                3           followed by Immediate value
+
+shift_left:
+    8bit:
+        0xf010  |   registerID4bit
+    16bit:
+        0xf000  |   registerID3bit
+    32bit int:
+        0xf008  |   registerID2bit
+        
+shift_right:
+    8bit:
+        0xf030  |   registerID4bit
+    16bit:
+        0xf020  |   registerID3bit
+    32bit int:
+        0xf028  |   registerID2bit
+
+rotate_left:
+    8bit:
+        0xf050  |   registerID4bit
+    16bit:
+        0xf040  |   registerID3bit
+    32bit int:
+        0xf048  |   registerID2bit
+
+rotate_right:
+    8bit:
+        0xf070  |   registerID4bit
+    16bit:
+        0xf060  |   registerID3bit
+    32bit int:
+        0xf068  |   registerID2bit
+
+increment:
+    8bit:
+        0xf090  |   registerID4bit
+    16bit:
+        0xf080  |   registerID3bit
+    32bit int:
+        0xf088  |   registerID2bit
+
+decrement:
+    8bit:
+        0xf0b0  |   registerID4bit
+    16bit:
+        0xf0a0  |   registerID3bit
+    32bit int:
+        0xf0a8  |   registerID2bit

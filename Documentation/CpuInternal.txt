@@ -1,0 +1,34 @@
+Registers:
+    3 32bit int     not as address          // X Y Z    // X will be used as program return code
+    3 32bit float   only math and compare   
+    6 General Purpose 16bit int with high and low as independent 8bit int   // A B C D E G
+    16 bit Stack Pointer
+    16 bit Programm Counter
+    8? bit Flags    Negative Overflow Kernel compareEqual compareGreater Interupt Zero Carry
+
+adressing modes:
+    Stack           Stack Pointer    
+    memory          Immediate or Register
+        with offset     
+    Immediate
+    Register
+
+Instructions:
+    all Instructions with data are multibles of 16 bit sized
+    memory access operation are only load store and jump
+    math_operation target_register source_register source_(register or immediate)
+        add
+        sub
+        mul
+        and
+        or
+        xor
+    compare source_register source_(register or immediate) // sets compareEqual and compareGreater Flags
+    register_modifing_operation source_register
+        shift_left
+        shift_right
+        rotate_left
+        rotate_right
+        increment
+        decrement
+    

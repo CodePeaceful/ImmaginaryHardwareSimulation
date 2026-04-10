@@ -1,0 +1,109 @@
+// stack pointer is valid as Pointer_registerID (6) but target_registerID only in kernel mode
+load:
+    8bit load Immediate:
+        low byte 0x00 | registerID      followed by value
+        high byte 0x08 | registerID     followed by value
+    16bit load Immediate:
+        0x2000 | target_registerID      followed by value
+    32bit int load Immediate:
+        0x2008 | target_registerID      followed by value
+    32bit float load Immediate:
+        0x200c | target_registerID      followed by value
+    8bit load memory:
+        low byte 0x3080 | target_registerID<<3 | Pointer_registerID     
+        low byte 0x3080 | target_registerID<<3 | 7      followed by Pointer value
+        high byte 0x30c0 | target_registerID<<3 | Pointer_registerID     
+        high byte 0x30c0 | target_registerID<<3 | 7     followed by Pointer value
+    16bit load memory:
+        0x3000 | target_registerID<<3 | Pointer_registerID     
+        0x3000 | target_registerID<<3 | 7      followed by Pointer value
+    32bit int load memory:
+        0x3040 | target_registerID<<3 | Pointer_registerID     
+        0x3040 | target_registerID<<3 | 7      followed by Pointer value
+    32bit float load memory:
+        0x3060 | target_registerID<<3 | Pointer_registerID     
+        0x3060 | target_registerID<<3 | 7      followed by Pointer value
+store:      // using invalid registerID for target_register stores 0 as used type
+    8bit store memory:
+        low byte 0x7080 | target_registerID<<3 | Pointer_registerID     
+        low byte 0x7080 | target_registerID<<3 | 7      followed by Pointer value
+        high byte 0x70c0 | target_registerID<<3 | Pointer_registerID     
+        high byte 0x70c0 | target_registerID<<3 | 7     followed by Pointer value
+    16bit store memory:
+        0x7000 | target_registerID<<3 | Pointer_registerID     
+        0x7000 | target_registerID<<3 | 7      followed by Pointer value
+    32bit int store memory:
+        0x7040 | target_registerID<<3 | Pointer_registerID     
+        0x7040 | target_registerID<<3 | 7      followed by Pointer value
+    32bit float store memory:
+        0x7060 | target_registerID<<3 | Pointer_registerID     
+        0x7060 | target_registerID<<3 | 7      followed by Pointer value
+pop:
+    8bit pop:
+        low byte 0x1010 | target_registerID
+        high byte 0x1018 | target_registerID
+        Flags 0x1017
+    16bit pop:
+        0x1000 | target_registerID
+    32bit int pop:
+        0x1008 | target_registerID
+    32bit float pop:
+        0x100c | target_registerID
+push:
+    8bit push:
+        low byte 0x5010 | target_registerID
+        high byte 0x5018 | target_registerID
+        Flags 0x5017
+    16bit push:
+        0x5000 | target_registerID
+    32bit int push:
+        0x5008 | target_registerID
+    32bit float push:
+        0x500c | target_registerID
+
+memory offset:  // offset is 16bit signed
+    load:
+        8bit:
+            0x1c00 | target_registerID4bit<<6 | Pointer_registerID<<3 | offset_registerID3bit
+                                                    7                                       followed by Immediate pointer value
+                                                                        7                   followed by offset value
+        16bit:
+            0x1800 | target_registerID3bit<<6 | Pointer_registerID<<3 | offset_registerID3bit
+                                                    7                                       followed by Immediate pointer value
+                                                                        7                   followed by offset value
+        32bit int:
+            0x1a00 | target_registerID2bit<<6 | Pointer_registerID<<3 | offset_registerID3bit
+                                                    7                                       followed by Immediate pointer value
+                                                                        7                   followed by offset value
+        32bit float:
+            0x1b00 | target_registerID2bit<<6 | Pointer_registerID<<3 | offset_registerID3bit
+                                                    7                                       followed by Immediate pointer value
+                                                                        7                   followed by offset value
+
+    store:
+        8bit:
+            0x5c00 | target_registerID4bit<<6 | Pointer_registerID<<3 | offset_registerID3bit
+                                                    7                                       followed by Immediate pointer value
+                                                                        7                   followed by offset value
+        16bit:
+            0x5800 | target_registerID3bit<<6 | Pointer_registerID<<3 | offset_registerID3bit
+                                                    7                                       followed by Immediate pointer value
+                                                                        7                   followed by offset value
+        32bit int:
+            0x5a00 | target_registerID2bit<<6 | Pointer_registerID<<3 | offset_registerID3bit
+                                                    7                                       followed by Immediate pointer value
+                                                                        7                   followed by offset value
+        32bit float:
+            0x5b00 | target_registerID2bit<<6 | Pointer_registerID<<3 | offset_registerID3bit
+                                                    7                                       followed by Immediate pointer value
+                                                                        7                   followed by offset value
+                                                                        
+transfer:
+    8bit:
+        0x4300 | target_registerID4bit<<4 | source_registerID4bit
+    16bit:
+        0x4200 | target_registerID3bit<<3 | source_registerID3bit
+    32bit int:
+        0x4280 | target_registerID2bit<<2 | source_registerID2bit
+    32bit int:
+        0x42c0 | target_registerID2bit<<2 | source_registerID2bit

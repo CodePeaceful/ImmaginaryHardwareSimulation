@@ -1,0 +1,65 @@
+// in 0x40xx
+syscall:        // in user mode: stores stackpointer program_counter and flags in register_cache and activates kernel mode   // in kernel mode: swiches to user mode and restores cached registers
+    0x4000
+
+startProgram:   // kernel mode only: swiches to user mode sets stackpointer to 0xffff and instructionPointer to 0x0400 all other registers may be preset by kernel
+    0x4001
+
+segfault:       // user mode only: swiches to kernel mode // X register will be set to special values if instruction was set by hardware error
+    0x4002
+
+stopProgram:    // user mode only: swiches to kernel mode informs the Kernel to free all related memory an release the PID
+    0x4003
+
+returnFromSubroutine:
+    0x4004
+
+jumpToSubroutine:
+    0x4008  |   registerID3bit
+                7               followed by Immediate
+
+jumpAlways:
+    0x4010  |   registerID3bit
+                7               followed by Immediate
+
+jumpGreater:
+    0x4020  |   registerID3bit
+                7               followed by Immediate
+
+jumpLess:
+    0x4028  |   registerID3bit
+                7               followed by Immediate
+
+jumpEqual:
+    0x4030  |   registerID3bit
+                7               followed by Immediate
+
+jumpNotEqual:
+    0x4038  |   registerID3bit
+                7               followed by Immediate
+
+jumpGreaterEqual:
+    0x4040  |   registerID3bit
+                7               followed by Immediate
+
+jumpLessEqual:
+    0x4048  |   registerID3bit
+                7               followed by Immediate
+
+jumpCarry:
+    0x4050  |   registerID3bit
+                7               followed by Immediate
+
+jumpNotCarry:
+    0x4058  |   registerID3bit
+                7               followed by Immediate
+
+jumpZero:
+    0x4060  |   registerID3bit
+                7               followed by Immediate
+
+jumpNotZero:
+    0x4068  |   registerID3bit
+                7               followed by Immediate
+
+

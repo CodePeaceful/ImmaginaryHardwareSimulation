@@ -1,0 +1,32 @@
+16 bit adressing everywhere
+little endian
+unaligned memory
+kernel:
+    0x0000 Kernel Ram 0x4000 Programm Ram Blocks 0x6000 IO 0x8000 Storage Blocks
+                                PID + BlockID                       only for file handler (PID 1)
+                                PID 0 means free to use
+
+user:
+    0x0000 Register Cache 0x0040? 0x0200 Free List 0x0400 executable binary xxxx Heap xxxx Stack
+            stack pointer           4 Bytes per Block   size as neeeded         grow at eachother
+            Programm Counter        128 Blocks
+
+512 byte Blocks
+
+Memory Mapper activated by Cpu Pin Controlled by internal Flag
+Memory Mapper uses PID Stored at Kernel Ram 0x7ffb
+
+terminal out buffer 0x6100 - 0x61ff
+terminal out marker data offset 0x7ffe output offset 0x7fff
+terminal in buffer 0x6000 - 0x60ff
+terminal in marker data offset 0x7ffc input offset 0x7ffd
+
+file handler is part of the Kernel but uses user mode Memory Mapping
+
+Interupt Flag is to be checked by user Programm and the handle Interupt syscal to be called when ready
+
+result:
+    16kiB Kernel Ram
+    2MiB Programm Ram
+    255 PID posibilities
+    16MiB Storage
