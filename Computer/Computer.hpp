@@ -16,7 +16,10 @@ private:
     uint32_t X, Y, Z;
     // registers float
     float fA, fB, fC;
+
+    uint32_t loadBuffer;
     uint8_t flags;
+
     std::array<uint8_t, 0x1'0000> kernelRam;
     std::array<MemoryBlock, 0x1000> programRam;
     std::array<MemoryBlock, 0x8000> storage;
@@ -49,6 +52,7 @@ private:
     void handleStoreWithOffset();
     void handleRegisterTransfer();
 
+    // jumps
     void syscall();
     void startProgram();
     void executeSegfault();
@@ -59,6 +63,26 @@ private:
     void jumpConditionalRegister(std::function<bool(uint8_t)> condition, uint8_t registerId);
     void jumpConditionalImmediate(std::function<bool(uint8_t)> condition);
 
+    // ALU
+    void compare8bit();
+    void compareMultyByte();
+    void threeParameterLogic();
+    void singleRegisterLogic();
+
+    void compare8bitImmediate();
+    void compare8bitRegister();
+    void compare16bit();
+    void compare32bit();
+    void compareFloat();
+    void threeParameterLogic8bit();
+    void threeParameterLogic16bit();
+    void threeParameterLogic32bit();
+    void threeParameterLogicFloat();
+    void singleRegisterLogic16bit();
+    void singleRegisterLogic32bit();
+    void singleRegisterLogic8bit();
+
+    // utils
     void setSegfault();
     uint16_t getI16RegisterById(uint8_t id);
     void setI16RegisterById(uint8_t id, uint16_t value);
