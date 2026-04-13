@@ -95,7 +95,7 @@ void Computer::run() {
         handleStoreWithOffset();
         return;
     }
-    if (currentInstruction[0] >= 0x42 && currentInstruction[0] < 0x44) {
+    if (currentInstruction[0] >= 0x42 && currentInstruction[0] < 0x48) {
         handleRegisterTransfer();
         return;
     }
@@ -212,6 +212,581 @@ void Computer::handleLogic() {
     }
 }
 
+void Computer::load8BitImmediate() {
+    setI8RegisterById(currentInstruction[0] & 0x0f, currentInstruction[1]);
+    instructionProgress = 0;
+}
+
+void Computer::loadMultyByteImmediate() {
+    if (instructionProgress <= currentInstruction[1] & 0x08 ? 5 : 3) {
+        loadInstructionByte();
+        return;
+    }
+    if (currentInstruction[1] < 0x08) {
+        setI16RegisterById(currentInstruction[1] & 0x07, currentInstruction[2] + (static_cast<uint16_t>(currentInstruction[3]) << 8));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[1] >= 0x08 && currentInstruction[1] < 0x0c) {
+        setI32RegisterById(currentInstruction[1] & 0x03, currentInstruction[2] + (static_cast<uint32_t>(currentInstruction[3]) << 8) + (static_cast<uint32_t>(currentInstruction[4]) << 16) + (static_cast<uint32_t>(currentInstruction[5]) << 24));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[1] >= 0x0c && currentInstruction[1] < 0x10) {
+        uint32_t value = currentInstruction[2] + (static_cast<uint32_t>(currentInstruction[3]) << 8) + (static_cast<uint32_t>(currentInstruction[4]) << 16) + (static_cast<uint32_t>(currentInstruction[5]) << 24);
+        float fValue;
+        std::memcpy(&fValue, &value, sizeof(float));
+        setF32RegisterById(currentInstruction[1] & 0x03, fValue);
+        instructionProgress = 0;
+        return;
+    }
+}
+
+void Computer::handleMemoryLoad() {
+    bool isImmediate = currentInstruction[1] & 0x07 == 0x07;
+    if (isImmediate) {
+        if (instructionProgress <= 3) {
+            loadInstructionByte();
+            return;
+        }
+    }
+    uint16_t adress;
+    if (currentInstruction[1] & 0x07 == 0x07) {
+        adress = currentInstruction[2] + (static_cast<uint16_t>(currentInstruction[3]) << 8);
+    }
+    else {
+        adress = getI16RegisterById(currentInstruction[1] & 0x07);
+    }
+    if (currentInstruction[1] & 0xc0 == 0x00) {
+        // 16 bit load
+        if (instructionProgress == 2 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress);
+            loadBuffer = value;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress + 1);
+            loadBuffer += static_cast<uint16_t>(value) << 8;
+            setI16RegisterById(currentInstruction[1] & 0x07, loadBuffer);
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xe0 == 0x40) {
+        // 32 bit load
+        if (instructionProgress == 2 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress);
+            loadBuffer = value;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress + 1);
+            loadBuffer += static_cast<uint16_t>(value) << 8;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 4 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress + 2);
+            loadBuffer += static_cast<uint32_t>(value) << 16;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 5 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress + 3);
+            loadBuffer += static_cast<uint32_t>(value) << 24;
+            setI32RegisterById(currentInstruction[1] & 0x07, loadBuffer);
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xe0 == 0x60) {
+        // float load
+        if (instructionProgress == 2 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress);
+            loadBuffer = value;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress + 1);
+            loadBuffer += static_cast<uint16_t>(value) << 8;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 4 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress + 2);
+            loadBuffer += static_cast<uint32_t>(value) << 16;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 5 + (isImmediate ? 2 : 0)) {
+            uint8_t value;
+            LOAD_MEMORY(value, adress + 3);
+            loadBuffer += static_cast<uint32_t>(value) << 24;
+            float fValue;
+            std::memcpy(&fValue, &loadBuffer, sizeof(float));
+            setF32RegisterById(currentInstruction[1] & 0x07, fValue);
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0x80 == 0x80) {
+        // 8 bit load
+        uint8_t value;
+        LOAD_MEMORY(value, adress);
+        setI8RegisterById(currentInstruction[1] & 0x07, value);
+        instructionProgress = 0;
+        return;
+    }
+}
+
+void Computer::handleMemoryStore() {
+    bool isImmediate = currentInstruction[1] & 0x07 == 0x07;
+    if (isImmediate) {
+        if (instructionProgress <= 3) {
+            loadInstructionByte();
+            return;
+        }
+    }
+    uint16_t adress;
+    if (currentInstruction[1] & 0x07 == 0x07) {
+        adress = currentInstruction[2] + (static_cast<uint16_t>(currentInstruction[3]) << 8);
+    }
+    else {
+        adress = getI16RegisterById(currentInstruction[1] & 0x07);
+    }
+    if (currentInstruction[1] & 0xc0 == 0x00) {
+        // 16 bit store
+        if (instructionProgress == 2 + (isImmediate ? 2 : 0)) {
+            uint16_t value = getI16RegisterById(currentInstruction[1] & 0x07);
+            STORE_MEMORY(value & 0x00ff, adress);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3 + (isImmediate ? 2 : 0)) {
+            uint16_t value = getI16RegisterById(currentInstruction[1] & 0x07);
+            value >>= 8;
+            STORE_MEMORY(value & 0x00ff, adress + 1);
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xe0 == 0x40) {
+        // 32 bit store
+        if (instructionProgress == 2 + (isImmediate ? 2 : 0)) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            STORE_MEMORY(value & 0x00ff, adress);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3 + (isImmediate ? 2 : 0)) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            value >>= 8;
+            STORE_MEMORY(value & 0x00ff, adress + 1);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 4 + (isImmediate ? 2 : 0)) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            value >>= 16;
+            STORE_MEMORY(value & 0x00ff, adress + 2);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 5 + (isImmediate ? 2 : 0)) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            value >>= 24;
+            STORE_MEMORY(value & 0x00ff, adress + 3);
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xe0 == 0x60) {
+        // float store
+        if (instructionProgress == 2 + (isImmediate ? 2 : 0)) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            STORE_MEMORY(value & 0x00ff, adress);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3 + (isImmediate ? 2 : 0)) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            value >>= 8;
+            STORE_MEMORY(value & 0x00ff, adress + 1);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 4 + (isImmediate ? 2 : 0)) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            value >>= 16;
+            STORE_MEMORY(value & 0x00ff, adress + 2);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 5 + (isImmediate ? 2 : 0)) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            value >>= 24;
+            STORE_MEMORY(value & 0x00ff, adress + 3);
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0x80 == 0x80) {
+        // 8 bit store
+        uint8_t value = getI8RegisterById(currentInstruction[1] & 0x07);
+        STORE_MEMORY(value, adress);
+        instructionProgress = 0;
+        return;
+    }
+}
+
+void Computer::handlePop() {
+    if (currentInstruction[1] & 0xf8 == 0x00) {
+        // 16 bit pop
+        if (instructionProgress == 2) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer = value;
+            ++stackPointer;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer += static_cast<uint16_t>(value) << 8;
+            setI16RegisterById(currentInstruction[1] & 0x07, loadBuffer);
+            ++stackPointer;
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xfc == 0x08) {
+        // 32 bit pop
+        if (instructionProgress == 2) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer = value;
+            ++stackPointer;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer += static_cast<uint16_t>(value) << 8;
+            ++stackPointer;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 4) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer += static_cast<uint32_t>(value) << 16;
+            ++stackPointer;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 5) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer += static_cast<uint32_t>(value) << 24;
+            setI32RegisterById(currentInstruction[1] & 0x07, loadBuffer);
+            ++stackPointer;
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xfc == 0x0c) {
+        // float pop
+        if (instructionProgress == 2) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer = value;
+            ++stackPointer;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer += static_cast<uint16_t>(value) << 8;
+            ++stackPointer;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 4) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer += static_cast<uint32_t>(value) << 16;
+            ++stackPointer;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 5) {
+            uint8_t value;
+            LOAD_MEMORY(value, stackPointer);
+            loadBuffer += static_cast<uint32_t>(value) << 24;
+            float fValue;
+            std::memcpy(&fValue, &loadBuffer, sizeof(float));
+            setF32RegisterById(currentInstruction[1] & 0x07, fValue);
+            ++stackPointer;
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xf0 == 0x10) {
+        // 8 bit pop
+        uint8_t value;
+        LOAD_MEMORY(value, stackPointer);
+        if (currentInstruction[1] == 0x17) {
+            // pop flags
+            flags = value;
+            ++stackPointer;
+            instructionProgress = 0;
+            return;
+        }
+        setI8RegisterById(currentInstruction[1] & 0x07, value);
+        ++stackPointer;
+        instructionProgress = 0;
+        return;
+    }
+}
+
+void Computer::handlePush() {
+    if (currentInstruction[1] & 0xf8 == 0x00) {
+        // 16 bit push
+        if (instructionProgress == 2) {
+            uint16_t value = getI16RegisterById(currentInstruction[1] & 0x07);
+            value >>= 8;
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3) {
+            uint16_t value = getI16RegisterById(currentInstruction[1] & 0x07);
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xfc == 0x08) {
+        // 32 bit push
+        if (instructionProgress == 2) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            value >>= 24;
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            value >>= 16;
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 4) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            value >>= 8;
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 5) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xfc == 0x0c) {
+        // float push
+        if (instructionProgress == 2) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            value >>= 24;
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 3) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            value >>= 16;
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 4) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            value >>= 8;
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == 5) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            --stackPointer;
+            STORE_MEMORY(value & 0x00ff, stackPointer);
+            instructionProgress = 0;
+            return;
+        }
+    }
+    if (currentInstruction[1] & 0xf0 == 0x10) {
+        // 8 bit push
+        if (currentInstruction[1] == 0x17) {
+            // push flags
+            --stackPointer;
+            STORE_MEMORY(flags, stackPointer);
+            instructionProgress = 0;
+            return;
+        }
+        uint8_t value = getI8RegisterById(currentInstruction[1] & 0x07);
+        --stackPointer;
+        STORE_MEMORY(value, stackPointer);
+        instructionProgress = 0;
+        return;
+    }
+}
+
+void Computer::handleLoadWithOffset() {
+    bool immediatePointer, immediateOffset;
+    immediateOffset = (currentInstruction[1] & 0x07) == 0x07;
+    immediatePointer = (currentInstruction[1] & 0x38) == 0x38;
+    if (immediatePointer && immediateOffset) {
+        // this does not make much sense, therfore a cpu lockup is created
+        return;
+    }
+    if (immediateOffset) {
+        loadWithImmediateOffset();
+        return;
+    }
+    if (immediatePointer) {
+        loadWithOffsetImmediatePointer();
+        return;
+    }
+    loadWithRegisterPointerAndOffset();
+}
+
+void Computer::handleStoreWithOffset() {
+    bool immediatePointer, immediateOffset;
+    immediateOffset = (currentInstruction[1] & 0x07) == 0x07;
+    immediatePointer = (currentInstruction[1] & 0x38) == 0x38;
+    if (immediateOffset && immediatePointer) {
+        // this does not make much sense, therfore a cpu lockup is created
+        return;
+    }
+    if (immediateOffset) {
+        storeWithImmediateOffset();
+        return;
+    }
+    if (immediatePointer) {
+        storeWithOffsetImmediatePointer();
+        return;
+    }
+    storeWithRegisterPointerAndOffset();
+}
+
+void Computer::handleRegisterTransfer() {
+    if (currentInstruction[0] == 0x42 && currentInstruction[1] & 0x80 == 0x00) {
+        // i16 to i16 register transfer
+        setI16RegisterById(currentInstruction[1] & 0x38 >> 3, getI16RegisterById(currentInstruction[1] & 0x07));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x42 && currentInstruction[1] & 0xc0 == 0x80) {
+        // i32 to i32 register transfer
+        setI32RegisterById(currentInstruction[1] & 0xc >> 2, getI32RegisterById(currentInstruction[1] & 0x03));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x42 && currentInstruction[1] & 0xc0 == 0xc0) {
+        // f32 to f32 register transfer
+        setF32RegisterById(currentInstruction[1] & 0xc >> 2, getF32RegisterById(currentInstruction[1] & 0x03));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x43) {
+        // i8 to i8 register transfer
+        setI8RegisterById(currentInstruction[1] & 0xf0 >> 4, getI8RegisterById(currentInstruction[1] & 0x0f));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x44) {
+        // i8 to i16 register transfer
+        setI16RegisterById(currentInstruction[1] & 0x70 >> 4, getI8RegisterById(currentInstruction[1] & 0x0f));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x45) {
+        // i16 to i8 register transfer
+        setI8RegisterById(currentInstruction[1] & 0x78 >> 3, getI16RegisterById(currentInstruction[1] & 0x07));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x46 && currentInstruction[1] & 0x80 == 0x00) {
+        // i16 to i32 register transfer
+        setI32RegisterById(currentInstruction[1] & 0x18 >> 3, getI16RegisterById(currentInstruction[1] & 0x07));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x46 && currentInstruction[1] & 0x80 == 0x80) {
+        // i32 to i16 register transfer
+        setI16RegisterById(currentInstruction[1] & 0x18 >> 3, getI32RegisterById(currentInstruction[1] & 0x07));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x47 && currentInstruction[1] & 0x80 == 0x00) {
+        // i32 to f32 register transfer (signed conversion)
+        uint32_t iValue = getI32RegisterById(currentInstruction[1] & 0x03);
+        setF32RegisterById(currentInstruction[1] & 0x0c >> 2, static_cast<float>(reinterpret_cast<int32_t&>(iValue)));
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x47 && currentInstruction[1] & 0x80 == 0x80) {
+        // f32 to i32 register transfer (signed conversion)
+        int32_t iValue = static_cast<int32_t>(getF32RegisterById(currentInstruction[1] & 0x03));
+        setI32RegisterById(currentInstruction[1] & 0x0c >> 2, reinterpret_cast<uint32_t&>(iValue));
+        instructionProgress = 0;
+        return;
+    }
+}
+
 void Computer::syscall() {
     if (kernelModeFlag & flags) {
         if (instructionProgress == 2) {
@@ -305,7 +880,7 @@ void Computer::startProgram() {
         X = 0xFFFF'FFFE;
         return;
     }
-    stackPointer = 0xffff;
+    stackPointer = 0x0000;
     progCount = 0x0400;
     flags &= ~kernelModeFlag;
     instructionProgress = 0;
@@ -333,17 +908,17 @@ void Computer::stopProgram() {
 
 void Computer::returnFromSubroutine() {
     if (instructionProgress == 2) {
-        ++stackPointer;
         uint8_t value;
         LOAD_MEMORY(value, stackPointer);
+        ++stackPointer;
         progCount = value;
         ++instructionProgress;
         return;
     }
     if (instructionProgress == 3) {
-        ++stackPointer;
         uint8_t value;
         LOAD_MEMORY(value, stackPointer);
+        ++stackPointer;
         progCount += static_cast<uint16_t>(value) << 8;
         instructionProgress = 0;
         return;
@@ -354,15 +929,15 @@ void Computer::returnFromSubroutine() {
 void Computer::jumpToSubroutineRegister(uint8_t registerId) {
     if (instructionProgress == 2) {
         uint8_t value = progCount & 0x00ff;
-        STORE_MEMORY(value, stackPointer);
         --stackPointer;
+        STORE_MEMORY(value, stackPointer);
         ++instructionProgress;
         return;
     }
     if (instructionProgress == 3) {
         uint8_t value = progCount >> 8;
-        STORE_MEMORY(value, stackPointer);
         --stackPointer;
+        STORE_MEMORY(value, stackPointer);
         ++instructionProgress;
         return;
     }
@@ -378,15 +953,15 @@ void Computer::jumpToSubroutineImmediate() {
     }
     if (instructionProgress == 4) {
         uint8_t value = progCount & 0x00ff;
-        STORE_MEMORY(value, stackPointer);
         --stackPointer;
+        STORE_MEMORY(value, stackPointer);
         ++instructionProgress;
         return;
     }
     if (instructionProgress == 5) {
         uint8_t value = progCount >> 8;
-        STORE_MEMORY(value, stackPointer);
         --stackPointer;
+        STORE_MEMORY(value, stackPointer);
         ++instructionProgress;
         return;
     }
@@ -492,6 +1067,7 @@ void Computer::compare8bitImmediate() {
         return;
     }
     flags &= ~compareGreaterFlag;
+    instructionProgress = 0;
 }
 
 void Computer::compare8bitRegister() {
@@ -507,6 +1083,7 @@ void Computer::compare8bitRegister() {
         return;
     }
     flags &= ~compareGreaterFlag;
+    instructionProgress = 0;
 }
 
 void Computer::compare16bit() {
@@ -543,6 +1120,7 @@ void Computer::compare16bit() {
         return;
     }
     flags &= ~compareGreaterFlag;
+    instructionProgress = 0;
 }
 
 void Computer::compare32bit() {
@@ -581,6 +1159,7 @@ void Computer::compare32bit() {
         return;
     }
     flags &= ~compareGreaterFlag;
+    instructionProgress = 0;
 }
 
 void Computer::compareFloat() {
@@ -621,6 +1200,7 @@ void Computer::compareFloat() {
         return;
     }
     flags &= ~compareGreaterFlag;
+    instructionProgress = 0;
 }
 
 void Computer::threeParameterLogic8bit() {
@@ -770,12 +1350,19 @@ void Computer::threeParameterLogic8bit() {
         loadInstructionByte();
         return;
     }
-    // valid opcodes are 0x96, 0xa6, 0xb6, 0xc6, 0xd6, 0xe6  garanteed from instruction decoding
-    auto logicFunction = logicFunctions[(currentInstruction[0] & 0x70 >> 4) - 1];
+    // valid opcodes are 0x96, 0xa6, 0xb6, 0xc6, 0xd6, 0xe6
+    uint8_t functionId = ((currentInstruction[0] & 0x70) >> 4) - 1;
+    if (functionId >= logicFunctions.size()) {
+        // invalid opcode, should be unreachable
+        instructionProgress = 0;
+        return;
+    }
+    auto logicFunction = logicFunctions[functionId];
     const uint8_t a = getI8RegisterById(currentInstruction[2] & 0xf0 >> 4);
     const uint8_t b = currentInstruction[2] & 0x07 == 0x07 ? currentInstruction[3] : getI8RegisterById(currentInstruction[2] & 0x0f);
     const uint8_t result = logicFunction(a, b, flags);
     setI8RegisterById(currentInstruction[1] & 0x0f, result);
+    instructionProgress = 0;
 }
 
 void Computer::threeParameterLogic16bit() {
@@ -925,15 +1512,21 @@ void Computer::threeParameterLogic16bit() {
             loadInstructionByte();
             return;
         }
-
     }
-    // valid opcodes are 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0 garanteed from instruction decoding
-    auto logicFunction = logicFunctions[(currentInstruction[0] & 0x70 >> 4) - 1];
+    // valid opcodes are 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0
+    uint8_t logicFunctionId = ((currentInstruction[0] & 0x70) >> 4) - 1;
+    if (logicFunctionId >= logicFunctions.size()) {
+        // invalid function id, should not happen due to instruction decoding
+        instructionProgress = 0;
+        return;
+    }
+    auto logicFunction = logicFunctions[logicFunctionId];
     const uint16_t a = getI16RegisterById(currentInstruction[1] & 0x68 >> 3);
     uint16_t b = currentInstruction[1] & 0x07 == 0x07 ? currentInstruction[2] + static_cast<uint16_t>(currentInstruction[3]) << 8 : getI16RegisterById(currentInstruction[2] & 0x07);
     const uint16_t result = logicFunction(a, b, flags);
     // target register id uses last bit of currentInstruction[0] and 2 bits of currentInstruction[1]
     setI16RegisterById((currentInstruction[0] & 0x01) << 2 + ((currentInstruction[1] & 0xc0) >> 6), result);
+    instructionProgress = 0;
 }
 
 void Computer::threeParameterLogic32bit() {
@@ -1084,12 +1677,19 @@ void Computer::threeParameterLogic32bit() {
             return;
         }
     }
-    // valid opcodes are 0x92, 0xa2, 0xb2, 0xc2, 0xd2, 0xe2 garanteed from instruction decoding
-    auto logicFunction = logicFunctions[(currentInstruction[0] & 0x70 >> 4) - 1];
+    // valid opcodes are 0x92, 0xa2, 0xb2, 0xc2, 0xd2, 0xe2
+    uint8_t functionIndex = (currentInstruction[0] & 0x70 >> 4) - 1;
+    if (functionIndex >= logicFunctions.size()) {
+        // invalid function index, should not happen due to instruction decoding
+        instructionProgress = 0;
+        return;
+    }
+    auto logicFunction = logicFunctions[functionIndex];
     const uint32_t a = getI32RegisterById(currentInstruction[1] & 0x0c >> 2);
     uint32_t b = currentInstruction[1] & 0x03 == 0x03 ? currentInstruction[2] + (static_cast<uint32_t>(currentInstruction[3]) << 8) + (static_cast<uint32_t>(currentInstruction[4]) << 16) + (static_cast<uint32_t>(currentInstruction[5]) << 24) : getI32RegisterById(currentInstruction[2] & 0x03);
     const uint32_t result = logicFunction(a, b, flags);
     setI32RegisterById(currentInstruction[1] & 0x30 >> 4, result);
+    instructionProgress = 0;
 }
 
 void Computer::threeParameterLogicFloat() {
@@ -1156,8 +1756,14 @@ void Computer::threeParameterLogicFloat() {
             return;
         }
     }
-    // valid opcodes are 0x94, 0xa4, 0xb4 garanteed from instruction decoding
-    auto logicFunction = logicFunctions[(currentInstruction[0] & 0x70 >> 4) - 1];
+    // valid opcodes are 0x94, 0xa4, 0xb4
+    uint8_t functionIndex = (currentInstruction[0] & 0x70 >> 4) - 1;
+    if (functionIndex >= logicFunctions.size()) {
+        // invalid function index, should not happen due to instruction decoding
+        instructionProgress = 0;
+        return;
+    }
+    auto logicFunction = logicFunctions[functionIndex];
     const float a = getF32RegisterById(currentInstruction[1] & 0x0c >> 2);
     float b;
     if (currentInstruction[1] & 0x03 == 0x03) {
@@ -1172,6 +1778,7 @@ void Computer::threeParameterLogicFloat() {
     }
     const float result = logicFunction(a, b, flags);
     setF32RegisterById(currentInstruction[1] & 0x30 >> 4, result);
+    instructionProgress = 0;
 }
 
 void Computer::singleRegisterLogic16bit() {
@@ -1292,10 +1899,17 @@ void Computer::singleRegisterLogic16bit() {
         }
     };
     // operation is determined by bits 5-7 of currentInstruction[1]
-    auto logicFunction = logicFunctions[currentInstruction[1] >> 5];
+    uint8_t functionIndex = currentInstruction[1] >> 5;
+    if (functionIndex >= logicFunctions.size()) {
+        // invalid function index, should not happen due to instruction decoding
+        instructionProgress = 0;
+        return;
+    }
+    auto logicFunction = logicFunctions[functionIndex];
     const uint16_t a = getI16RegisterById(currentInstruction[1] & 0x07);
     const uint16_t result = logicFunction(a, flags);
     setI16RegisterById(currentInstruction[1] & 0x07, result);
+    instructionProgress = 0;
 }
 
 void Computer::singleRegisterLogic32bit() {
@@ -1416,10 +2030,17 @@ void Computer::singleRegisterLogic32bit() {
         }
     };
     // operation is determined by bits 5-7 of currentInstruction[1]
-    auto logicFunction = logicFunctions[currentInstruction[1] >> 5];
+    uint8_t functionIndex = currentInstruction[1] >> 5;
+    if (functionIndex >= logicFunctions.size()) {
+        // invalid function index, should not happen due to instruction decoding
+        instructionProgress = 0;
+        return;
+    }
+    auto logicFunction = logicFunctions[functionIndex];
     const uint32_t a = getI32RegisterById(currentInstruction[1] & 0x03);
     const uint32_t result = logicFunction(a, flags);
     setI32RegisterById(currentInstruction[1] & 0x03, result);
+    instructionProgress = 0;
 }
 
 void Computer::singleRegisterLogic8bit() {
@@ -1540,10 +2161,235 @@ void Computer::singleRegisterLogic8bit() {
         }
     };
     // operation is determined by bits 5-7 of currentInstruction[1]
-    auto logicFunction = logicFunctions[currentInstruction[1] >> 5];
+    uint8_t functionIndex = currentInstruction[1] >> 5;
+    if (functionIndex >= logicFunctions.size()) {
+        // invalid function index, should not happen due to instruction decoding
+        instructionProgress = 0;
+        return;
+    }
+    auto logicFunction = logicFunctions[functionIndex];
     const uint8_t a = getI8RegisterById(currentInstruction[1] & 0x0f);
     const uint8_t result = logicFunction(a, flags);
     setI8RegisterById(currentInstruction[1] & 0x0f, result);
+    instructionProgress = 0;
+}
+
+void Computer::loadWithImmediateOffset() {
+    if (instructionProgress <= 3) {
+        loadInstructionByte();
+        return;
+    }
+    const uint16_t readAdress = getI16RegisterById(currentInstruction[1] & 0x38 >> 3) + currentInstruction[2] + (static_cast<uint16_t>(currentInstruction[3]) << 8);
+    loadWithOffsetFinalize(4, readAdress);
+}
+
+void Computer::loadWithOffsetImmediatePointer() {
+    if (instructionProgress <= 3) {
+        loadInstructionByte();
+        return;
+    }
+    const uint16_t readAdress = getI16RegisterById(currentInstruction[1] & 0x07) + currentInstruction[2] + (static_cast<uint16_t>(currentInstruction[3]) << 8);
+    loadWithOffsetFinalize(4, readAdress);
+}
+
+void Computer::loadWithRegisterPointerAndOffset() {
+    const uint16_t readAdress = getI16RegisterById(currentInstruction[1] & 0x38 >> 3) + getI16RegisterById(currentInstruction[1] & 0x07);
+    loadWithOffsetFinalize(2, readAdress);
+}
+
+void Computer::loadWithOffsetFinalize(uint8_t startCycle, uint16_t readAdress) {
+    if (currentInstruction[0] & 0xfe == 0x18) {
+        // load 16 bit
+        if (instructionProgress == startCycle) {
+            uint8_t lowByte;
+            LOAD_MEMORY(lowByte, readAdress);
+            loadBuffer = lowByte;
+            ++instructionProgress;
+            return;
+        }
+        uint8_t highByte;
+        LOAD_MEMORY(highByte, readAdress + 1);
+        loadBuffer += static_cast<uint16_t>(highByte) << 8;
+        setI16RegisterById(currentInstruction[0] & 0x01 << 2 + (currentInstruction[1] & 0xc0) >> 6, loadBuffer);
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x1a) {
+        // load 32 bit
+        if (instructionProgress == startCycle) {
+            uint8_t byte0;
+            LOAD_MEMORY(byte0, readAdress);
+            loadBuffer = byte0;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == startCycle + 1) {
+            uint8_t byte1;
+            LOAD_MEMORY(byte1, readAdress + 1);
+            loadBuffer += static_cast<uint32_t>(byte1) << 8;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == startCycle + 2) {
+            uint8_t byte2;
+            LOAD_MEMORY(byte2, readAdress + 2);
+            loadBuffer += static_cast<uint32_t>(byte2) << 16;
+            ++instructionProgress;
+            return;
+        }
+        uint8_t byte3;
+        LOAD_MEMORY(byte3, readAdress + 3);
+        loadBuffer += static_cast<uint32_t>(byte3) << 24;
+        setI32RegisterById(currentInstruction[1] & 0xc0 >> 6, loadBuffer);
+        instructionProgress = 0;
+    }
+    if (currentInstruction[0] == 0x1b) {
+        // load float
+        if (instructionProgress == startCycle) {
+            uint8_t byte0;
+            LOAD_MEMORY(byte0, readAdress);
+            loadBuffer = byte0;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == startCycle + 1) {
+            uint8_t byte1;
+            LOAD_MEMORY(byte1, readAdress + 1);
+            loadBuffer += static_cast<uint32_t>(byte1) << 8;
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == startCycle + 2) {
+            uint8_t byte2;
+            LOAD_MEMORY(byte2, readAdress + 2);
+            loadBuffer += static_cast<uint32_t>(byte2) << 16;
+            ++instructionProgress;
+            return;
+        }
+        uint8_t byte3;
+        LOAD_MEMORY(byte3, readAdress + 3);
+        loadBuffer += static_cast<uint32_t>(byte3) << 24;
+        float fValue;
+        std::memcpy(&fValue, &loadBuffer, sizeof(float));
+        setF32RegisterById(currentInstruction[1] & 0xc0 >> 6, fValue);
+        instructionProgress = 0;
+    }
+    // load 8 bit
+    uint8_t value;
+    LOAD_MEMORY(value, readAdress);
+    setI8RegisterById(currentInstruction[0] & 0x03 << 2 + (currentInstruction[1] & 0xc0) >> 6, value);
+    instructionProgress = 0;
+}
+
+void Computer::storeWithImmediateOffset() {
+    if (instructionProgress <= 3) {
+        loadInstructionByte();
+        return;
+    }
+    const uint16_t writeAdress = getI16RegisterById(currentInstruction[1] & 0x38 >> 3) + currentInstruction[2] + (static_cast<uint16_t>(currentInstruction[3]) << 8);
+    storeWithOffsetFinalize(4, writeAdress);
+}
+
+void Computer::storeWithOffsetImmediatePointer() {
+    if (instructionProgress <= 3) {
+        loadInstructionByte();
+        return;
+    }
+    const uint16_t writeAdress = getI16RegisterById(currentInstruction[1] & 0x07) + currentInstruction[2] + (static_cast<uint16_t>(currentInstruction[3]) << 8);
+    storeWithOffsetFinalize(4, writeAdress);
+}
+
+void Computer::storeWithRegisterPointerAndOffset() {
+    const uint16_t writeAdress = getI16RegisterById(currentInstruction[1] & 0x38 >> 3) + getI16RegisterById(currentInstruction[1] & 0x07);
+    storeWithOffsetFinalize(2, writeAdress);
+}
+
+void Computer::storeWithOffsetFinalize(uint8_t startCycle, uint16_t writeAdress) {
+    if (currentInstruction[0] & 0xfe == 0x58) {
+        // store 16 bit
+        if (instructionProgress == startCycle) {
+            uint16_t value = getI16RegisterById(currentInstruction[0] & 0x01 << 2 + (currentInstruction[1] & 0xc0) >> 6);
+            uint8_t lowByte = value & 0x00ff;
+            STORE_MEMORY(lowByte, writeAdress);
+            ++instructionProgress;
+            return;
+        }
+        uint16_t value = getI16RegisterById(currentInstruction[0] & 0x01 << 2 + (currentInstruction[1] & 0xc0) >> 6);
+        uint8_t highByte = value >> 8;
+        STORE_MEMORY(highByte, writeAdress + 1);
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x5a) {
+        // store 32 bit
+        if (instructionProgress == startCycle) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0xc0 >> 6);
+            uint8_t byte0 = value & 0x0000'00ff;
+            STORE_MEMORY(byte0, writeAdress);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == startCycle + 1) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0xc0 >> 6);
+            uint8_t byte1 = (value & 0x0000'ff00) >> 8;
+            STORE_MEMORY(byte1, writeAdress + 1);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == startCycle + 2) {
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0xc0 >> 6);
+            uint8_t byte2 = (value & 0x00ff'0000) >> 16;
+            STORE_MEMORY(byte2, writeAdress + 2);
+            ++instructionProgress;
+            return;
+        }
+        uint32_t value = getI32RegisterById(currentInstruction[1] & 0xc0 >> 6);
+        uint8_t byte3 = (value & 0xff00'0000) >> 24;
+        STORE_MEMORY(byte3, writeAdress + 3);
+        instructionProgress = 0;
+        return;
+    }
+    if (currentInstruction[0] == 0x5b) {
+        // store float
+        if (instructionProgress == startCycle) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0xc0 >> 6);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            uint8_t byte0 = value & 0x0000'00ff;
+            STORE_MEMORY(byte0, writeAdress);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == startCycle + 1) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0xc0 >> 6);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            uint8_t byte1 = (value & 0x0000'ff00) >> 8;
+            STORE_MEMORY(byte1, writeAdress + 1);
+            ++instructionProgress;
+            return;
+        }
+        if (instructionProgress == startCycle + 2) {
+            float fValue = getF32RegisterById(currentInstruction[1] & 0xc0 >> 6);
+            uint32_t value;
+            std::memcpy(&value, &fValue, sizeof(float));
+            uint8_t byte2 = (value & 0x00ff'0000) >> 16;
+            STORE_MEMORY(byte2, writeAdress + 2);
+            ++instructionProgress;
+            return;
+        }
+        float fValue = getF32RegisterById(currentInstruction[1] & 0xc0 >> 6);
+        uint32_t value;
+        std::memcpy(&value, &fValue, sizeof(float));
+        uint8_t byte3 = (value & 0xff00'0000) >> 24;
+        STORE_MEMORY(byte3, writeAdress + 3);
+        instructionProgress = 0;
+        return;
+    }
+    // store 8 bit
+    uint8_t value = getI8RegisterById(currentInstruction[0] & 0x03 << 2 + (currentInstruction[1] & 0xc0) >> 6);
+    STORE_MEMORY(value, writeAdress);
+    instructionProgress = 0;
 }
 
 void Computer::setSegfault() {

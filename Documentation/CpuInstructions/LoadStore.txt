@@ -105,5 +105,19 @@ transfer:
         0x4200 | target_registerID3bit<<3 | source_registerID3bit
     32bit int:
         0x4280 | target_registerID2bit<<2 | source_registerID2bit
-    32bit int:
+    32bit float:
         0x42c0 | target_registerID2bit<<2 | source_registerID2bit
+
+transfer with typechange:
+    8bit -> 16bit:
+        0x4400 | target_registerID3bit << 4 | source_registerID4bit
+    16bit -> 8bit:
+        0x4500 | target_registerID4bit << 3 | source_registerID3bit
+    16bit -> 32bit:
+        0x4600 | target_registerID2bit << 3 | source_registerID3bit
+    32bit -> 16bit:
+        0x4680 | target_registerID3bit << 2 | source_registerID2bit
+    32bit(signed) -> float:
+        0x4700 | target_registerID2bit << 2 | source_registerID2bit
+    float -> 32bit(signed):
+        0x4780 | target_registerID2bit << 2 | source_registerID2bit

@@ -82,6 +82,17 @@ private:
     void singleRegisterLogic32bit();
     void singleRegisterLogic8bit();
 
+    void loadWithImmediateOffset();
+    void loadWithOffsetImmediatePointer();
+    void loadWithRegisterPointerAndOffset();
+    void loadWithOffsetFinalize(uint8_t startCycle, uint16_t readAdress);
+
+    void storeWithImmediateOffset();
+    void storeWithOffsetImmediatePointer();
+    void storeWithRegisterPointerAndOffset();
+    void storeWithOffsetFinalize(uint8_t startCycle, uint16_t writeAdress);
+
+
     // utils
     void setSegfault();
     uint16_t getI16RegisterById(uint8_t id);
