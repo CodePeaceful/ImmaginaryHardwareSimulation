@@ -14,12 +14,14 @@ user:
 512 byte Blocks
 
 Memory Mapper activated by Cpu Pin Controlled by internal Flag
-Memory Mapper uses PID Stored at Kernel Ram 0x7ffb
+Memory Mapper uses PID Stored at Kernel Ram 0x7fff
 
 terminal out buffer 0x6100 - 0x61ff
 terminal out marker data offset (hardware set) 0x6300 output offset 0x6380
 terminal in buffer 0x6000 - 0x60ff
 terminal in marker data offset (hardware set) 0x6200 input offset 0x6280
+
+shutdown byte 0x6400 if not 0 terminal is shutdown 
 
 file handler is part of the Kernel but uses user mode Memory Mapping
 

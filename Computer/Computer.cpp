@@ -5,12 +5,17 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
+#include <chrono>
+
+using namespace std::chrono_literals;
 
 constexpr uint16_t handleSegfaultAdress = 0x0000;
 constexpr uint16_t handleStopProgramAdress = 0x0002;
 constexpr uint16_t handleSyscalAdress = 0x0004;
+constexpr uint16_t shutdownByteAdress = 0x6400;
 
-constexpr uint16_t activePidAdress = 0x7ffb;
+constexpr uint16_t activePidAdress = 0x7fff;
 constexpr uint16_t userMemoryMapStart = 0x4000;
 constexpr uint8_t carryFlag = 0b0000'0001;
 constexpr uint8_t zeroFlag = 0b0000'0010;
@@ -137,6 +142,9 @@ void Computer::saveStorage(const std::filesystem::path& storageFile) {
 
 void Computer::inputLoop() {
     while (true) {
+        if (kernelRam[shutdownByteAdress]) {
+            return;
+        }
         char input;
         std::cin.get(input);
         // input to input buffer at kernel ram 0x6000 to 0x60ff, buffer offset position (kernel ram 0x6200)
@@ -148,12 +156,19 @@ void Computer::inputLoop() {
 
 void Computer::outputLoop() {
     while (true) {
+        if (kernelRam[shutdownByteAdress]) {
+            return;
+        }
         // output from output buffer at kernel ram 0x6100 to 0x61ff, buffer offset position (kernel ram 0x6300)
         if (kernelRam[0x6300] != kernelRam[0x6380]) {
             char output = static_cast<char>(kernelRam[0x6100 + kernelRam[0x6300]]);
             std::cout << output;
             // increment buffer offset
             kernelRam[0x6300] = (kernelRam[0x6300] + 1) % 256;
+        }
+        else {
+            // if buffer empty wait a bit before checking again
+            std::this_thread::sleep_for(100ms);
         }
     }
 }
