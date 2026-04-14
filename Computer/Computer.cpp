@@ -2,6 +2,9 @@
 
 #include <utility>
 #include <cstring>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
 
 constexpr uint16_t handleSegfaultAdress = 0x0000;
 constexpr uint16_t handleStopProgramAdress = 0x0002;
@@ -42,6 +45,30 @@ else { \
     setSegfault(); \
     X = 0xFFFF'FFFF; \
     return; \
+}
+
+Computer::Computer(const std::filesystem::path& kernelRomFile, const std::filesystem::path& storageFile) {
+    auto kernelRomSize = std::filesystem::file_size(kernelRomFile);
+    if (kernelRomSize > kernelRam.size()) {
+        throw std::runtime_error("Kernel rom file too big");
+    }
+    auto storageSize = std::filesystem::file_size(storageFile);
+    if (storageSize > storage.size() * sizeof(MemoryBlock)) {
+        throw std::runtime_error("Storage file too big");
+    }
+    std::ifstream kernelFile(kernelRomFile, std::ios::binary);
+    kernelFile.read(reinterpret_cast<char*>(kernelRam.data()), kernelRam.size());
+    std::ifstream storage(storageFile, std::ios::binary);
+    for (auto& block : this->storage) {
+        storage.read(reinterpret_cast<char*>(block.data()), block.size());
+    }
+    inputThread = std::jthread(&Computer::inputLoop, this);
+    outputThread = std::jthread(&Computer::outputLoop, this);
+}
+
+void Computer::reset() {
+    progCount = 6;
+    flags = kernelModeFlag;
 }
 
 void Computer::run(std::size_t cycles) {
@@ -98,6 +125,36 @@ void Computer::run() {
     if (currentInstruction[0] >= 0x42 && currentInstruction[0] < 0x48) {
         handleRegisterTransfer();
         return;
+    }
+}
+
+void Computer::saveStorage(const std::filesystem::path& storageFile) {
+    std::ofstream file(storageFile, std::ios::binary);
+    for (const auto& block : storage) {
+        file.write(reinterpret_cast<const char*>(block.data()), block.size());
+    }
+}
+
+void Computer::inputLoop() {
+    while (true) {
+        char input;
+        std::cin.get(input);
+        // input to input buffer at kernel ram 0x6000 to 0x60ff, buffer offset position (kernel ram 0x6200)
+        kernelRam[0x6000 + kernelRam[0x6200]] = static_cast<uint8_t>(input);
+        // increment buffer offset
+        kernelRam[0x6200] = (kernelRam[0x6200] + 1) % 256;
+    }
+}
+
+void Computer::outputLoop() {
+    while (true) {
+        // output from output buffer at kernel ram 0x6100 to 0x61ff, buffer offset position (kernel ram 0x6300)
+        if (kernelRam[0x6300] != kernelRam[0x6380]) {
+            char output = static_cast<char>(kernelRam[0x6100 + kernelRam[0x6300]]);
+            std::cout << output;
+            // increment buffer offset
+            kernelRam[0x6300] = (kernelRam[0x6300] + 1) % 256;
+        }
     }
 }
 

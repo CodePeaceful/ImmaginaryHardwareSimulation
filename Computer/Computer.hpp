@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <expected>
 #include <functional>
-
-#include<filesystem>
+#include <thread>
+#include <filesystem>
 
 class Computer
 {
@@ -30,6 +30,9 @@ private:
     // will always point at free lists
     std::array<uint16_t, 256> memoryMapperCache;
 
+    std::jthread inputThread;
+    std::jthread outputThread;
+
 public:
     Computer(const std::filesystem::path& kernelRomFile, const std::filesystem::path& storageFile);
     void reset();
@@ -37,7 +40,12 @@ public:
     // run one cycle
     void run();
 
+    void saveStorage(const std::filesystem::path& storageFile);
+
 private:
+    void inputLoop();
+    void outputLoop();
+
     std::expected<uint8_t*, bool> userMapMemory(uint16_t userAdress);
     void loadInstructionByte();
     void handleJump();
