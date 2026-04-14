@@ -22,6 +22,10 @@ jumpAlways:
     0x4010  |   registerID3bit
                 7               followed by Immediate
 
+jumpOnInterrupt:
+    0x4018  |   registerID3bit
+                7               followed by Immediate
+
 jumpGreater:
     0x4020  |   registerID3bit
                 7               followed by Immediate
@@ -68,10 +72,6 @@ jumpNegative:
 
 jumpNotNegative:
     0x4078  |   registerID3bit
-                7               followed by Immediate
-
-jumpOnInterrupt:
-    0x4080  |   registerID3bit
                 7               followed by Immediate
 
 

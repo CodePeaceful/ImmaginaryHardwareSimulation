@@ -1,0 +1,70 @@
+Register names:
+    16bit: // SP is also used as stackPointer
+        A, B, C, D, E, G, SP
+
+    8bit:
+        lA, hA, lB, hB, lC, hC, lD, hD, lE, hE, lG, hG
+        flags   // only push and pop
+    
+    32bit:
+        X, Y, Z
+
+    float;
+        fA, fB, fC
+
+    dis     for discarding any result
+
+keywords:
+    3 parameter: target_register source_register <source_register | Immediate>
+        add
+        sub
+        mul
+        or
+        and
+        xor
+    3 parameter: target_register <pointer_register | Immediate> <offset_register | Immediate>
+        load
+        store
+    2 parameter: target_register <pointer_register | Immediate>
+        load
+        store
+    2 parameter: target_register Immediate
+        loadI
+    2 parameter: source_register source_register
+        cmp
+    2 parameter: target_register source_register
+        move
+    1 parameter: target_register
+        shl
+        shr
+        rol
+        ror
+        inc
+        dec
+        not
+        push
+        pop
+    1 parameter: <pointer_register | Immediate>
+        jsr
+        jmp
+        ji
+        jg
+        jl
+        je
+        jne
+        jge
+        jle
+        jc
+        jnc
+        jz
+        jnz
+        jn
+        jnn
+    0 parameter:
+        sysc
+        staP
+        segf
+        stoP
+        rts
+
+Immediate values as named adresses or C style literals

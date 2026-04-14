@@ -226,6 +226,8 @@ void Computer::handleJump() {
     static std::array<std::function<bool(uint8_t)>, 14> jumpReasons{
         // jump Always
         [](uint8_t flags) {return true; },
+        // jumpOnInterrupt
+        [](uint8_t flags) {return interruptFlag & flags; },
         // jump Greater
         [](uint8_t flags) {return !(compareEqualFlag & flags) && compareEqualFlag & flags; },
         // jump Less
@@ -249,9 +251,7 @@ void Computer::handleJump() {
         // jumpNegative
         [](uint8_t flags) {return negativeFlag & flags; },
         // jumpNotNegative
-        [](uint8_t flags) {return !(negativeFlag & flags); },
-        // jumpOnInterrupt
-        [](uint8_t flags) {return interruptFlag & flags; }
+        [](uint8_t flags) {return !(negativeFlag & flags); }
     };
 
     if (currentInstruction[1] / 8 >= 2 && currentInstruction[1] / 8 < jumpReasons.size() + 2) {
@@ -285,6 +285,18 @@ void Computer::handleLogic() {
 }
 
 void Computer::load8BitImmediate() {
+    if (currentInstruction[1] == 0) {
+        flags |= zeroFlag;
+    }
+    else {
+        flags &= ~zeroFlag;
+    }
+    if (0x80 & currentInstruction[1]) {
+        flags |= negativeFlag;
+    }
+    else {
+        flags &= ~negativeFlag;
+    }
     setI8RegisterById(currentInstruction[0] & 0x0f, currentInstruction[1]);
     instructionProgress = 0;
 }
@@ -295,12 +307,38 @@ void Computer::loadMultyByteImmediate() {
         return;
     }
     if (currentInstruction[1] < 0x08) {
-        setI16RegisterById(currentInstruction[1] & 0x07, currentInstruction[2] + (static_cast<uint16_t>(currentInstruction[3]) << 8));
+        uint16_t value = currentInstruction[2] + (static_cast<uint16_t>(currentInstruction[3]) << 8);
+        if (value == 0) {
+            flags |= zeroFlag;
+        }
+        else {
+            flags &= ~zeroFlag;
+        }
+        if (value & 0x8000) {
+            flags |= negativeFlag;
+        }
+        else {
+            flags &= ~negativeFlag;
+        }
+        setI16RegisterById(currentInstruction[1] & 0x07, value);
         instructionProgress = 0;
         return;
     }
     if (currentInstruction[1] >= 0x08 && currentInstruction[1] < 0x0c) {
-        setI32RegisterById(currentInstruction[1] & 0x03, currentInstruction[2] + (static_cast<uint32_t>(currentInstruction[3]) << 8) + (static_cast<uint32_t>(currentInstruction[4]) << 16) + (static_cast<uint32_t>(currentInstruction[5]) << 24));
+        uint32_t value = currentInstruction[2] + (static_cast<uint32_t>(currentInstruction[3]) << 8) + (static_cast<uint32_t>(currentInstruction[4]) << 16) + (static_cast<uint32_t>(currentInstruction[5]) << 24);
+        if (value == 0) {
+            flags |= zeroFlag;
+        }
+        else {
+            flags &= ~zeroFlag;
+        }
+        if (value & 0x8000'0000) {
+            flags |= negativeFlag;
+        }
+        else {
+            flags &= ~negativeFlag;
+        }
+        setI32RegisterById(currentInstruction[1] & 0x03, value);
         instructionProgress = 0;
         return;
     }
@@ -308,6 +346,18 @@ void Computer::loadMultyByteImmediate() {
         uint32_t value = currentInstruction[2] + (static_cast<uint32_t>(currentInstruction[3]) << 8) + (static_cast<uint32_t>(currentInstruction[4]) << 16) + (static_cast<uint32_t>(currentInstruction[5]) << 24);
         float fValue;
         std::memcpy(&fValue, &value, sizeof(float));
+        if (fValue == 0.0f) {
+            flags |= zeroFlag;
+        }
+        else {
+            flags &= ~zeroFlag;
+        }
+        if (fValue < 0.0f) {
+            flags |= negativeFlag;
+        }
+        else {
+            flags &= ~negativeFlag;
+        }
         setF32RegisterById(currentInstruction[1] & 0x03, fValue);
         instructionProgress = 0;
         return;
@@ -342,6 +392,18 @@ void Computer::handleMemoryLoad() {
             uint8_t value;
             LOAD_MEMORY(value, adress + 1);
             loadBuffer += static_cast<uint16_t>(value) << 8;
+            if (loadBuffer == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (loadBuffer & 0x8000) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
             setI16RegisterById(currentInstruction[1] & 0x07, loadBuffer);
             instructionProgress = 0;
             return;
@@ -374,6 +436,18 @@ void Computer::handleMemoryLoad() {
             uint8_t value;
             LOAD_MEMORY(value, adress + 3);
             loadBuffer += static_cast<uint32_t>(value) << 24;
+            if (loadBuffer == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (loadBuffer & 0x8000'0000) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
             setI32RegisterById(currentInstruction[1] & 0x07, loadBuffer);
             instructionProgress = 0;
             return;
@@ -408,6 +482,18 @@ void Computer::handleMemoryLoad() {
             loadBuffer += static_cast<uint32_t>(value) << 24;
             float fValue;
             std::memcpy(&fValue, &loadBuffer, sizeof(float));
+            if (fValue == 0.0f) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (fValue < 0.0f) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
             setF32RegisterById(currentInstruction[1] & 0x07, fValue);
             instructionProgress = 0;
             return;
@@ -546,6 +632,18 @@ void Computer::handlePop() {
             uint8_t value;
             LOAD_MEMORY(value, stackPointer);
             loadBuffer += static_cast<uint16_t>(value) << 8;
+            if (loadBuffer == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (loadBuffer & 0x8000) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
             setI16RegisterById(currentInstruction[1] & 0x07, loadBuffer);
             ++stackPointer;
             instructionProgress = 0;
@@ -582,6 +680,18 @@ void Computer::handlePop() {
             uint8_t value;
             LOAD_MEMORY(value, stackPointer);
             loadBuffer += static_cast<uint32_t>(value) << 24;
+            if (loadBuffer == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (loadBuffer & 0x8000'0000) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
             setI32RegisterById(currentInstruction[1] & 0x07, loadBuffer);
             ++stackPointer;
             instructionProgress = 0;
@@ -620,6 +730,18 @@ void Computer::handlePop() {
             loadBuffer += static_cast<uint32_t>(value) << 24;
             float fValue;
             std::memcpy(&fValue, &loadBuffer, sizeof(float));
+            if (fValue == 0.0f) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (fValue < 0.0f) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
             setF32RegisterById(currentInstruction[1] & 0x07, fValue);
             ++stackPointer;
             instructionProgress = 0;
@@ -636,6 +758,18 @@ void Computer::handlePop() {
             ++stackPointer;
             instructionProgress = 0;
             return;
+        }
+        if (value == 0) {
+            flags |= zeroFlag;
+        }
+        else {
+            flags &= ~zeroFlag;
+        }
+        if (value & 0x80) {
+            flags |= negativeFlag;
+        }
+        else {
+            flags &= ~negativeFlag;
         }
         setI8RegisterById(currentInstruction[1] & 0x07, value);
         ++stackPointer;
@@ -2282,6 +2416,18 @@ void Computer::loadWithOffsetFinalize(uint8_t startCycle, uint16_t readAdress) {
         uint8_t highByte;
         LOAD_MEMORY(highByte, readAdress + 1);
         loadBuffer += static_cast<uint16_t>(highByte) << 8;
+        if (loadBuffer == 0) {
+            flags |= zeroFlag;
+        }
+        else {
+            flags &= ~zeroFlag;
+        }
+        if (loadBuffer & 0x8000) {
+            flags |= negativeFlag;
+        }
+        else {
+            flags &= ~negativeFlag;
+        }
         setI16RegisterById(currentInstruction[0] & 0x01 << 2 + (currentInstruction[1] & 0xc0) >> 6, loadBuffer);
         instructionProgress = 0;
         return;
@@ -2312,6 +2458,18 @@ void Computer::loadWithOffsetFinalize(uint8_t startCycle, uint16_t readAdress) {
         uint8_t byte3;
         LOAD_MEMORY(byte3, readAdress + 3);
         loadBuffer += static_cast<uint32_t>(byte3) << 24;
+        if (loadBuffer == 0) {
+            flags |= zeroFlag;
+        }
+        else {
+            flags &= ~zeroFlag;
+        }
+        if (loadBuffer & 0x8000'0000) {
+            flags |= negativeFlag;
+        }
+        else {
+            flags &= ~negativeFlag;
+        }
         setI32RegisterById(currentInstruction[1] & 0xc0 >> 6, loadBuffer);
         instructionProgress = 0;
     }
@@ -2343,12 +2501,36 @@ void Computer::loadWithOffsetFinalize(uint8_t startCycle, uint16_t readAdress) {
         loadBuffer += static_cast<uint32_t>(byte3) << 24;
         float fValue;
         std::memcpy(&fValue, &loadBuffer, sizeof(float));
+        if (fValue == 0.0f) {
+            flags |= zeroFlag;
+        }
+        else {
+            flags &= ~zeroFlag;
+        }
+        if (fValue < 0.0f) {
+            flags |= negativeFlag;
+        }
+        else {
+            flags &= ~negativeFlag;
+        }
         setF32RegisterById(currentInstruction[1] & 0xc0 >> 6, fValue);
         instructionProgress = 0;
     }
     // load 8 bit
     uint8_t value;
     LOAD_MEMORY(value, readAdress);
+    if (value == 0) {
+        flags |= zeroFlag;
+    }
+    else {
+        flags &= ~zeroFlag;
+    }
+    if (value & 0x80) {
+        flags |= negativeFlag;
+    }
+    else {
+        flags &= ~negativeFlag;
+    }
     setI8RegisterById(currentInstruction[0] & 0x03 << 2 + (currentInstruction[1] & 0xc0) >> 6, value);
     instructionProgress = 0;
 }
