@@ -12,7 +12,7 @@ Register names:
     float;
         fA, fB, fC
 
-    dis     for discarding any result
+    dis     for discarding any result (only 3 param alu otherwise it would be ambigous witch bytesize)
 
 keywords:
     3 parameter: target_register source_register <source_register | Immediate>
@@ -22,15 +22,15 @@ keywords:
         or
         and
         xor
-    3 parameter: target_register <pointer_register | Immediate> <offset_register | Immediate>
+    3 parameter: target_register *<pointer_register | Immediate> *<offset_register | Immediate>
         load
         store
-    2 parameter: target_register <pointer_register | Immediate>
+    2 parameter: target_register *<pointer_register | Immediate>
         load
         store
     2 parameter: target_register Immediate
-        loadI
-    2 parameter: source_register source_register
+        load
+    2 parameter: source_register <source_register | Immediate>
         cmp
     2 parameter: target_register source_register
         move
@@ -44,7 +44,7 @@ keywords:
         not
         push
         pop
-    1 parameter: <pointer_register | Immediate>
+    1 parameter: *<pointer_register | Immediate>
         jsr
         jmp
         ji

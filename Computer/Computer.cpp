@@ -54,7 +54,7 @@ else { \
 
 Computer::Computer(const std::filesystem::path& kernelRomFile, const std::filesystem::path& storageFile) {
     auto kernelRomSize = std::filesystem::file_size(kernelRomFile);
-    if (kernelRomSize > kernelRam.size()) {
+    if (kernelRomSize > userMemoryMapStart) {
         throw std::runtime_error("Kernel rom file too big");
     }
     auto storageSize = std::filesystem::file_size(storageFile);
