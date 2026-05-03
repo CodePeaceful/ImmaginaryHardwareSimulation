@@ -4,6 +4,7 @@
 #include <sstream>
 #include <algorithm>
 #include <iterator>
+#include <cstring>
 
 Assembler::Assembler(const std::filesystem::path& inputFile) : inputFile(inputFile) {}
 
@@ -431,7 +432,83 @@ std::vector<uint8_t> Assembler::secondPass(const std::vector<std::string>& lines
             auto it = std::ranges::find_if(line, [](char c) { return !std::isspace(c); });
             if (it != line.end()) {
                 if (*it == '.') {
+                    uint32_t pageOffset = currentAddress & 0x1ff;
                     currentAddress = getDotDirectiveNewAddress(line, currentAddress);
+                    if (line.find(".page_start") != std::string::npos || line.find(".org") != std::string::npos) {
+                        // fill with zeros until page offset aligned
+                        while (currentAddress & 0x1ff != pageOffset) {
+                            machineCode.push_back(0);
+                            ++pageOffset;
+                        }
+                    }
+                    // user defined data directives, read parameter and set values
+                    else if (line.find(".byte") != std::string::npos) {
+                        std::string valueStr = line.substr(line.find(".byte") + 5);
+                        valueStr.erase(std::remove_if(valueStr.begin(), valueStr.end(), ::isspace), valueStr.end());
+                        uint8_t value;
+                        if (u8_defines.contains(valueStr)) {
+                            value = u8_defines[valueStr];
+                        }
+                        else {
+                            value = static_cast<uint8_t>(readIntegerLiteral(valueStr));
+                        }
+                        machineCode.push_back(value);
+                    }
+                    else if (line.find(".word") != std::string::npos) {
+                        std::string valueStr = line.substr(line.find(".word") + 5);
+                        valueStr.erase(std::remove_if(valueStr.begin(), valueStr.end(), ::isspace), valueStr.end());
+                        uint16_t value;
+                        if (labels_u16_defines.contains(valueStr)) {
+                            value = labels_u16_defines[valueStr];
+                        }
+                        else if (u8_defines.contains(valueStr)) {
+                            value = u8_defines[valueStr];
+                        }
+                        else {
+                            value = static_cast<uint16_t>(readIntegerLiteral(valueStr));
+                        }
+                        machineCode.push_back(value & 0xff);
+                        machineCode.push_back((value >> 8) & 0xff);
+                    }
+                    else if (line.find(".dword") != std::string::npos) {
+                        std::string valueStr = line.substr(line.find(".dword") + 5);
+                        valueStr.erase(std::remove_if(valueStr.begin(), valueStr.end(), ::isspace), valueStr.end());
+                        uint32_t value;
+                        if (u32_defines.contains(valueStr)) {
+                            value = u32_defines[valueStr];
+                        }
+                        else if (labels_u16_defines.contains(valueStr)) {
+                            value = labels_u16_defines[valueStr];
+                        }
+                        else if (u8_defines.contains(valueStr)) {
+                            value = u8_defines[valueStr];
+                        }
+                        else {
+                            value = static_cast<uint32_t>(readIntegerLiteral(valueStr));
+                        }
+                        machineCode.push_back(value & 0xff);
+                        machineCode.push_back((value >> 8) & 0xff);
+                        machineCode.push_back((value >> 16) & 0xff);
+                        machineCode.push_back((value >> 24) & 0xff);
+                    }
+                    else if (line.find(".float") != std::string::npos) {
+                        std::string valueStr = line.substr(line.find(".float") + 6);
+                        valueStr.erase(std::remove_if(valueStr.begin(), valueStr.end(), ::isspace), valueStr.end());
+                        float value;
+                        if (f32_defines.contains(valueStr)) {
+                            value = f32_defines[valueStr];
+                        }
+                        else {
+                            value = static_cast<float>(std::stof(valueStr));
+                        }
+                        // Convert float to bytes (assuming IEEE 754 format)
+                        uint32_t floatAsInt;
+                        std::memcpy(&floatAsInt, &value, sizeof(float));
+                        machineCode.push_back(floatAsInt & 0xff);
+                        machineCode.push_back((floatAsInt >> 8) & 0xff);
+                        machineCode.push_back((floatAsInt >> 16) & 0xff);
+                        machineCode.push_back((floatAsInt >> 24) & 0xff);
+                    }
                 }
                 else if (std::isalpha(*it)) {
                     auto instructionLength = getInstructionLength(line);
@@ -485,6 +562,55 @@ std::vector<uint8_t> Assembler::generateMachineCodeForInstruction(const std::str
 }
 
 std::vector<uint8_t> Assembler::getInstructionCodeNoParameters(const std::string& instruction) {
-    return std::vector<uint8_t>();
+    uint16_t opcode = noParameterMap[instruction];
+    return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
 }
 
+std::vector<uint8_t> Assembler::getInstructionCodeOneParameter(const std::string& instruction, std::string& param) {
+    if (param[0] == '*') {
+        param = param.substr(1);
+        uint16_t opcode = pointerMap[instruction];
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        if (std::ranges::contains(wordRegisterNames, param)) {
+            // set register id in opcode
+            code[1] |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param));
+            return code;
+        }
+        // immediate value (register id 7)
+        code[1] |= 7;
+        uint32_t immediate = readIntegerLiteral(param);
+        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
+        return code;
+    }
+    if (std::ranges::contains(byteRegisterNames, param) || param == "flags") {
+        uint16_t opcode = target8bitMap[instruction];
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        if (param == "flags") {
+            code[1] |= 7; // flags register id
+        }
+        else {
+            code[1] |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param));
+        }
+        return code;
+    }
+    if (std::ranges::contains(wordRegisterNames, param)) {
+        uint16_t opcode = target16bitMap[instruction];
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        code[1] |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param));
+        return code;
+    }
+    if (std::ranges::contains(dwordRegisterNames, param)) {
+        uint16_t opcode = target32bitMap[instruction];
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        code[1] |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param));
+        return code;
+    }
+    if (std::ranges::contains(floatRegisterNames, param)) {
+        uint16_t opcode = targetFloatMap[instruction];
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        code[1] |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param));
+        return code;
+    }
+    throw std::runtime_error("Unknown instruction or parameter: " + instruction + " " + param);
+}

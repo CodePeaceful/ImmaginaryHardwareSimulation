@@ -173,6 +173,7 @@ void Computer::outputLoop() {
     }
 }
 
+// FIXME: wrong for any space outside normal mapping zone
 std::expected<uint8_t*, bool> Computer::userMapMemory(uint16_t userAdress) {
     const uint8_t pid = kernelRam[activePidAdress];
     auto activeFreeList = programRam[memoryMapperCache[pid]];
@@ -692,7 +693,7 @@ void Computer::handlePop() {
             else {
                 flags &= ~negativeFlag;
             }
-            setI32RegisterById(currentInstruction[1] & 0x07, loadBuffer);
+            setI32RegisterById(currentInstruction[1] & 0x03, loadBuffer);
             ++stackPointer;
             instructionProgress = 0;
             return;
@@ -742,7 +743,7 @@ void Computer::handlePop() {
             else {
                 flags &= ~negativeFlag;
             }
-            setF32RegisterById(currentInstruction[1] & 0x07, fValue);
+            setF32RegisterById(currentInstruction[1] & 0x03, fValue);
             ++stackPointer;
             instructionProgress = 0;
             return;
@@ -771,7 +772,7 @@ void Computer::handlePop() {
         else {
             flags &= ~negativeFlag;
         }
-        setI8RegisterById(currentInstruction[1] & 0x07, value);
+        setI8RegisterById(currentInstruction[1] & 0x0f, value);
         ++stackPointer;
         instructionProgress = 0;
         return;
@@ -800,7 +801,7 @@ void Computer::handlePush() {
     if (currentInstruction[1] & 0xfc == 0x08) {
         // 32 bit push
         if (instructionProgress == 2) {
-            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x03);
             value >>= 24;
             --stackPointer;
             STORE_MEMORY(value & 0x00ff, stackPointer);
@@ -808,7 +809,7 @@ void Computer::handlePush() {
             return;
         }
         if (instructionProgress == 3) {
-            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x03);
             value >>= 16;
             --stackPointer;
             STORE_MEMORY(value & 0x00ff, stackPointer);
@@ -816,7 +817,7 @@ void Computer::handlePush() {
             return;
         }
         if (instructionProgress == 4) {
-            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x03);
             value >>= 8;
             --stackPointer;
             STORE_MEMORY(value & 0x00ff, stackPointer);
@@ -824,7 +825,7 @@ void Computer::handlePush() {
             return;
         }
         if (instructionProgress == 5) {
-            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x03);
             --stackPointer;
             STORE_MEMORY(value & 0x00ff, stackPointer);
             instructionProgress = 0;
@@ -834,7 +835,7 @@ void Computer::handlePush() {
     if (currentInstruction[1] & 0xfc == 0x0c) {
         // float push
         if (instructionProgress == 2) {
-            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x03);
             uint32_t value;
             std::memcpy(&value, &fValue, sizeof(float));
             value >>= 24;
@@ -844,7 +845,7 @@ void Computer::handlePush() {
             return;
         }
         if (instructionProgress == 3) {
-            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x03);
             uint32_t value;
             std::memcpy(&value, &fValue, sizeof(float));
             value >>= 16;
@@ -854,7 +855,7 @@ void Computer::handlePush() {
             return;
         }
         if (instructionProgress == 4) {
-            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x03);
             uint32_t value;
             std::memcpy(&value, &fValue, sizeof(float));
             value >>= 8;
@@ -864,7 +865,7 @@ void Computer::handlePush() {
             return;
         }
         if (instructionProgress == 5) {
-            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            float fValue = getF32RegisterById(currentInstruction[1] & 0x03);
             uint32_t value;
             std::memcpy(&value, &fValue, sizeof(float));
             --stackPointer;
@@ -882,7 +883,7 @@ void Computer::handlePush() {
             instructionProgress = 0;
             return;
         }
-        uint8_t value = getI8RegisterById(currentInstruction[1] & 0x07);
+        uint8_t value = getI8RegisterById(currentInstruction[1] & 0x0f);
         --stackPointer;
         STORE_MEMORY(value, stackPointer);
         instructionProgress = 0;
