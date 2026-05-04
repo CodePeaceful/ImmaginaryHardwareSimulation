@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iterator>
 #include <cstring>
+#include <ranges>
 
 Assembler::Assembler(const std::filesystem::path& inputFile) : inputFile(inputFile) {}
 
@@ -273,6 +274,7 @@ uint32_t Assembler::getInstructionLengthTwoParameters(const std::string& instruc
         }
         throw std::runtime_error("Unknown instruction for float to float operation: " + instruction);
     }
+    throw std::runtime_error("Unknown instruction or parameter: " + instruction + " " + param1 + " " + param2);
 }
 
 uint32_t Assembler::getInstructionLengthThreeParameters(const std::string& instruction, const std::string& param1, std::string& param2, std::string& param3) {
@@ -613,4 +615,161 @@ std::vector<uint8_t> Assembler::getInstructionCodeOneParameter(const std::string
         return code;
     }
     throw std::runtime_error("Unknown instruction or parameter: " + instruction + " " + param);
+}
+
+std::vector<uint8_t> Assembler::getInstructionCodeTwoParameters(const std::string& instruction, const std::string& param1, std::string& param2) {
+    if (param1[0] == '*') {
+        throw std::runtime_error("Invalid first parameter for two-parameter instruction: " + param1);
+    }
+    if (param2[0] == '*') {
+        return getInstuctionCodeTargetPointer(instruction, param1, param2);
+    }
+    if (instruction == "move") {
+        return getInstructionCodeMove(instruction, param1, param2);
+    }
+    if (instruction == "load") {
+        return getInstructionCodeLoadImmediate(instruction, param1, param2);
+    }
+    if (std::ranges::contains(byteRegisterNames, param1)) {
+        uint16_t opcode = targetSource8bitMap[instruction];
+        opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param1)) << 4;
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        if (std::ranges::contains(byteRegisterNames, param2)) {
+            code[1] |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param2));
+            return code;
+        }
+        code[1] |= 7; // immediate value (register id 7)
+        uint32_t immediate;
+        if (u8_defines.contains(param2)) {
+            immediate = u8_defines[param2];
+        }
+        else {
+            immediate = readIntegerLiteral(param2);
+        }
+        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        code.push_back(static_cast<uint8_t>(0)); // padding for uniform instruction length
+        return code;
+    }
+    if (std::ranges::contains(wordRegisterNames, param1)) {
+        uint16_t opcode = targetSource16bitMap[instruction];
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param1)) << 3;
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        if (std::ranges::contains(wordRegisterNames, param2)) {
+            code[1] |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param2));
+            return code;
+        }
+        code[1] |= 7; // immediate value (register id 7)
+        uint32_t immediate;
+        if (labels_u16_defines.contains(param2)) {
+            immediate = labels_u16_defines[param2];
+        }
+        else if (u8_defines.contains(param2)) {
+            immediate = u8_defines[param2];
+        }
+        else {
+            immediate = readIntegerLiteral(param2);
+        }
+        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
+        return code;
+    }
+    if (std::ranges::contains(dwordRegisterNames, param1)) {
+        uint16_t opcode = targetSource32bitMap[instruction];
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param1)) << 2;
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        if (std::ranges::contains(dwordRegisterNames, param2)) {
+            code[1] |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param2));
+            return code;
+        }
+        code[1] |= 3; // immediate value (register id 7)
+        uint32_t immediate;
+        if (u32_defines.contains(param2)) {
+            immediate = u32_defines[param2];
+        }
+        else if (labels_u16_defines.contains(param2)) {
+            immediate = labels_u16_defines[param2];
+        }
+        else if (u8_defines.contains(param2)) {
+            immediate = u8_defines[param2];
+        }
+        else {
+            immediate = readIntegerLiteral(param2);
+        }
+        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 16) & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 24) & 0xFF));
+        return code;
+    }
+    if (std::ranges::contains(floatRegisterNames, param1)) {
+        uint16_t opcode = targetSourceFloatMap[instruction];
+        opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param1)) << 2;
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        if (std::ranges::contains(floatRegisterNames, param2)) {
+            code[1] |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param2));
+            return code;
+        }
+        code[1] |= 3; // immediate value (register id 7)
+        float immediateValue;
+        if (f32_defines.contains(param2)) {
+            immediateValue = f32_defines[param2];
+        }
+        else {
+            immediateValue = std::stof(param2);
+        }
+        uint32_t immediate;
+        std::memcpy(&immediate, &immediateValue, sizeof(float));
+        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 16) & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 24) & 0xFF));
+        return code;
+    }
+    throw std::runtime_error("Unknown instruction or parameter: " + instruction + " " + param1 + " " + param2);
+}
+
+std::vector<uint8_t> Assembler::getInstuctionCodeTargetPointer(const std::string& instruction, const std::string& param1, std::string& param2) {
+    param2 = param2.substr(1);
+    uint16_t opcode;
+    if (std::ranges::contains(wordRegisterNames, param1)) {
+        opcode = targetPointer16bitMap[instruction];
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param1)) << 3;
+    }
+    else if (std::ranges::contains(byteRegisterNames, param1)) {
+        opcode = targetPointer8bitMap[instruction];
+        opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param1)) << 3;
+    }
+    else if (std::ranges::contains(dwordRegisterNames, param1)) {
+        opcode = targetPointer32bitMap[instruction];
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param1)) << 3;
+    }
+    else if (std::ranges::contains(floatRegisterNames, param1)) {
+        opcode = targetPointerFloatMap[instruction];
+        opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param1)) << 3;
+    }
+    else {
+        throw std::runtime_error("Unknown instruction or parameter: " + instruction + " " + param1 + " " + param2);
+    }
+    std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    if (std::ranges::contains(wordRegisterNames, param2)) {
+        code[1] |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param2));
+    }
+    else {
+        // immediate value (register id 7)
+        code[1] |= 7;
+        uint32_t immediate;
+        if (labels_u16_defines.contains(param2)) {
+            immediate = labels_u16_defines[param2];
+        }
+        else if (u8_defines.contains(param2)) {
+            immediate = u8_defines[param2];
+        }
+        else {
+            immediate = readIntegerLiteral(param2);
+        }
+        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
+    }
+
+    return code;
 }

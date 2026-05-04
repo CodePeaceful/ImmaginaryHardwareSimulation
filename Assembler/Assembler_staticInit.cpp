@@ -1,5 +1,7 @@
 #include "Assembler.hpp"
 
+#include <array>
+
 std::map<std::string, uint16_t> Assembler::targetSourceSource8bitMap{
     {"add", 0x9600},
     {"sub", 0xa600},

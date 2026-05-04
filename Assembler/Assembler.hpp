@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <vector>
 #include <map>
+#include <string>
+#include <array>
 
 class Assembler
 {
@@ -77,4 +79,8 @@ private:
     std::vector<uint8_t> getInstructionCodeOneParameter(const std::string& instruction, std::string& param);
     std::vector<uint8_t> getInstructionCodeTwoParameters(const std::string& instruction, const std::string& param1, std::string& param2);
     std::vector<uint8_t> getInstructionCodeThreeParameters(const std::string& instruction, const std::string& param1, const std::string& param2, const std::string& param3);
+
+    std::vector<uint8_t> getInstuctionCodeTargetPointer(const std::string& instruction, const std::string& param1, std::string& param2);
+    std::vector<uint8_t> getInstructionCodeMove(const std::string& instruction, const std::string& param1, std::string& param2);
+    std::vector<uint8_t> getInstructionCodeLoadImmediate(const std::string& instruction, const std::string& param1, std::string& param2);
 };
