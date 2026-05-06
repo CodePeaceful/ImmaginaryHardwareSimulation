@@ -728,6 +728,19 @@ std::vector<uint8_t> Assembler::getInstructionCodeTwoParameters(const std::strin
     throw std::runtime_error("Unknown instruction or parameter: " + instruction + " " + param1 + " " + param2);
 }
 
+std::vector<uint8_t> Assembler::getInstructionCodeThreeParameters(const std::string& instruction, const std::string& param1, const std::string& param2, const std::string& param3) {
+    if (param1[0] == '*') {
+        throw std::runtime_error("Invalid first parameter for three-parameter instruction: " + param1);
+    }
+    if (param2[0] == '*' ^ param3[0] == '*') {
+        throw std::runtime_error("None or both of the last two parameters must be a pointer for three-parameter instructions: " + param2 + " " + param3);
+    }
+    if (param2[0] == '*' && param3[0] == '*') {
+        return getInstructionCodeLoadStoreOffset(instruction, param1, param2, param3);
+    }
+    return getInstructionCodeThreeParamLogic(instruction, param1, param2, param3);
+}
+
 std::vector<uint8_t> Assembler::getInstuctionCodeTargetPointer(const std::string& instruction, const std::string& param1, std::string& param2) {
     param2 = param2.substr(1);
     uint16_t opcode;
@@ -772,4 +785,338 @@ std::vector<uint8_t> Assembler::getInstuctionCodeTargetPointer(const std::string
     }
 
     return code;
+}
+
+std::vector<uint8_t> Assembler::getInstructionCodeMove(const std::string& instruction, const std::string& param1, std::string& param2) {
+    if (instruction != "move") {
+        throw std::runtime_error("Invalid instruction for move operation: " + instruction);
+    }
+    if (std::ranges::contains(byteRegisterNames, param1) && std::ranges::contains(byteRegisterNames, param2)) {
+        uint16_t opcode = 0x4300; // move byte to byte
+        opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param1)) << 4;
+        opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    if (std::ranges::contains(wordRegisterNames, param1) && std::ranges::contains(wordRegisterNames, param2)) {
+        uint16_t opcode = 0x4200; // move word to word
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param1)) << 3;
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    if (std::ranges::contains(dwordRegisterNames, param1) && std::ranges::contains(dwordRegisterNames, param2)) {
+        uint16_t opcode = 0x4280; // move dword to dword
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param1)) << 2;
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    if (std::ranges::contains(floatRegisterNames, param1) && std::ranges::contains(floatRegisterNames, param2)) {
+        uint16_t opcode = 0x42c0; // move float to float
+        opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param1)) << 2;
+        opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    if (std::ranges::contains(byteRegisterNames, param1) && std::ranges::contains(wordRegisterNames, param2)) {
+        uint16_t opcode = 0x4500; // move word to byte
+        opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param1)) << 3;
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    if (std::ranges::contains(wordRegisterNames, param1) && std::ranges::contains(byteRegisterNames, param2)) {
+        uint16_t opcode = 0x4400; // move byte to word
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param1)) << 4;
+        opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    if (std::ranges::contains(wordRegisterNames, param1) && std::ranges::contains(dwordRegisterNames, param2)) {
+        uint16_t opcode = 0x4680; // move dword to word
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param1)) << 2;
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    if (std::ranges::contains(dwordRegisterNames, param1) && std::ranges::contains(wordRegisterNames, param2)) {
+        uint16_t opcode = 0x4600; // move word to dword
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param1)) << 3;
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    if (std::ranges::contains(dwordRegisterNames, param1) && std::ranges::contains(floatRegisterNames, param2)) {
+        uint16_t opcode = 0x4780; // move float to dword
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param1)) << 2;
+        opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    if (std::ranges::contains(floatRegisterNames, param1) && std::ranges::contains(dwordRegisterNames, param2)) {
+        uint16_t opcode = 0x4700; // move dword to float
+        opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param1)) << 2;
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param2));
+        return {static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    }
+    throw std::runtime_error("Unknown instruction or parameter combination for move: " + instruction + " " + param1 + " " + param2);
+}
+
+std::vector<uint8_t> Assembler::getInstructionCodeLoadImmediate(const std::string& instruction, const std::string& param1, std::string& param2) {
+    if (instruction != "load") {
+        throw std::runtime_error("Invalid instruction for load immediate operation: " + instruction);
+    }
+    if (std::ranges::contains(byteRegisterNames, param1)) {
+        uint8_t opcode = 0x00; // load immediate to byte
+        opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param1));
+        uint32_t immediate;
+        if (u8_defines.contains(param2)) {
+            immediate = u8_defines[param2];
+        }
+        else {
+            immediate = readIntegerLiteral(param2);
+        }
+        std::vector<uint8_t> code{opcode, static_cast<uint8_t>(immediate & 0xFF)};
+        return code;
+    }
+    if (std::ranges::contains(wordRegisterNames, param1)) {
+        uint16_t opcode = 0x2000; // load immediate to word
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param1));
+        uint32_t immediate;
+        if (labels_u16_defines.contains(param2)) {
+            immediate = labels_u16_defines[param2];
+        }
+        else if (u8_defines.contains(param2)) {
+            immediate = u8_defines[param2];
+        }
+        else {
+            immediate = readIntegerLiteral(param2);
+        }
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF), static_cast<uint8_t>(immediate & 0xFF), static_cast<uint8_t>((immediate >> 8) & 0xFF)};
+        return code;
+    }
+    if (std::ranges::contains(dwordRegisterNames, param1)) {
+        uint16_t opcode = 0x2008; // load immediate to dword
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param1));
+        uint32_t immediate;
+        if (u32_defines.contains(param2)) {
+            immediate = u32_defines[param2];
+        }
+        else if (labels_u16_defines.contains(param2)) {
+            immediate = labels_u16_defines[param2];
+        }
+        else if (u8_defines.contains(param2)) {
+            immediate = u8_defines[param2];
+        }
+        else {
+            immediate = readIntegerLiteral(param2);
+        }
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF), static_cast<uint8_t>(immediate & 0xFF), static_cast<uint8_t>((immediate >> 8) & 0xFF), static_cast<uint8_t>((immediate >> 16) & 0xFF), static_cast<uint8_t>((immediate >> 24) & 0xFF)};
+        return code;
+    }
+    if (std::ranges::contains(floatRegisterNames, param1)) {
+        uint16_t opcode = 0x200c; // load immediate to float
+        opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param1));
+        float immediateValue;
+        if (f32_defines.contains(param2)) {
+            immediateValue = f32_defines[param2];
+        }
+        else {
+            immediateValue = std::stof(param2);
+        }
+        uint32_t immediate;
+        std::memcpy(&immediate, &immediateValue, sizeof(float));
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF), static_cast<uint8_t>(immediate & 0xFF), static_cast<uint8_t>((immediate >> 8) & 0xFF), static_cast<uint8_t>((immediate >> 16) & 0xFF), static_cast<uint8_t>((immediate >> 24) & 0xFF)};
+        return code;
+    }
+    throw std::runtime_error("Unknown instruction or parameter combination for load immediate: " + instruction + " " + param1 + " " + param2);
+}
+
+std::vector<uint8_t> Assembler::getInstructionCodeLoadStoreOffset(const std::string& instruction, const std::string& param1, const std::string& param2, const std::string& param3) {
+    if (instruction != "load" && instruction != "store") {
+        throw std::runtime_error("Invalid instruction for load/store with offset operation: " + instruction);
+    }
+    std::string pointerParam = param2.substr(1);
+    std::string offsetParam = param3.substr(1);
+    if (!std::ranges::contains(wordRegisterNames, pointerParam) && !std::ranges::contains(wordRegisterNames, offsetParam)) {
+        throw std::runtime_error("At least one of the pointer or offset parameters must be a word register for load/store with offset: " + instruction + " " + param1 + " " + param2 + " " + param3);
+    }
+    uint16_t opcode;
+    if (std::ranges::contains(wordRegisterNames, param1)) {
+        opcode = 0x1800;
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param1)) << 6;
+    }
+    else if (std::ranges::contains(byteRegisterNames, param1)) {
+        opcode = 0x1c00;
+        opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param1)) << 6;
+    }
+    else if (std::ranges::contains(dwordRegisterNames, param1)) {
+        opcode = 0x1a00;
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param1)) << 6;
+    }
+    else if (std::ranges::contains(floatRegisterNames, param1)) {
+        opcode = 0x1b00;
+        opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param1)) << 6;
+    }
+    else {
+        throw std::runtime_error("Unknown instruction or parameter: " + instruction + " " + param1 + " " + param2 + " " + param3);
+    }
+    if (instruction == "store") {
+        opcode |= 0x4000; // set store bit
+    }
+    std::optional<uint32_t> immediate;
+    if (std::ranges::contains(wordRegisterNames, pointerParam)) {
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, pointerParam)) << 3;
+    }
+    else {
+        opcode |= 7 << 3; // immediate value (register id 7)
+        if (labels_u16_defines.contains(pointerParam)) {
+            immediate = labels_u16_defines[pointerParam];
+        }
+        else if (u8_defines.contains(pointerParam)) {
+            immediate = u8_defines[pointerParam];
+        }
+        else {
+            immediate = std::stoul(pointerParam);
+        }
+    }
+    if (std::ranges::contains(wordRegisterNames, offsetParam)) {
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, offsetParam));
+    }
+    else {
+        opcode |= 7; // immediate value (register id 7)
+        if (labels_u16_defines.contains(offsetParam)) {
+            immediate = labels_u16_defines[offsetParam];
+        }
+        else if (u8_defines.contains(offsetParam)) {
+            immediate = u8_defines[offsetParam];
+        }
+        else {
+            immediate = std::stoul(offsetParam);
+        }
+    }
+    std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+    if (immediate.has_value()) {
+        code.push_back(static_cast<uint8_t>(immediate.value() & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate.value() >> 8) & 0xFF));
+    }
+    return code;
+}
+
+std::vector<uint8_t> Assembler::getInstructionCodeThreeParamLogic(const std::string& instruction, const std::string& param1, const std::string& param2, const std::string& param3) {
+    if (std::ranges::contains(byteRegisterNames, param2)) {
+        uint16_t opcode = targetSourceSource8bitMap[instruction];
+        if (param1 == "dis") {
+            opcode |= 0xf; // discarding result by invalid register id 15
+        }
+        else {
+            opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param1));
+        }
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        uint16_t params;
+        params |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param2)) << 12;
+        if (std::ranges::contains(byteRegisterNames, param3)) {
+            params |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param3)) << 8;
+        }
+        else {
+            params |= 7 << 8; // immediate value (register id 7)
+            uint32_t immediate;
+            if (u8_defines.contains(param3)) {
+                immediate = u8_defines[param3];
+            }
+            else {
+                immediate = readIntegerLiteral(param3);
+            }
+            params |= immediate & 0xFF;
+        }
+        code.push_back(static_cast<uint8_t>((params >> 8) & 0xFF));
+        code.push_back(static_cast<uint8_t>(params & 0xFF));
+        return code;
+    }
+    if (std::ranges::contains(wordRegisterNames, param2)) {
+        uint16_t opcode = targetSourceSource16bitMap[instruction];
+        if (param1 == "dis") {
+            opcode |= 0x7 << 6; // discarding result by invalid register id 7
+        }
+        else {
+            opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param1)) << 6;
+        }
+        opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param2)) << 3;
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        if (std::ranges::contains(wordRegisterNames, param3)) {
+            code[1] |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param3));
+            return code;
+        }
+        code[1] |= 7; // immediate value (register id 7)
+        uint32_t immediate;
+        if (labels_u16_defines.contains(param3)) {
+            immediate = labels_u16_defines[param3];
+        }
+        else if (u8_defines.contains(param3)) {
+            immediate = u8_defines[param3];
+        }
+        else {
+            immediate = readIntegerLiteral(param3);
+        }
+        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
+        return code;
+    }
+    if (std::ranges::contains(dwordRegisterNames, param2)) {
+        uint16_t opcode = targetSourceSource32bitMap[instruction];
+        if (param1 == "dis") {
+            opcode |= 0x3 << 4; // discarding result by invalid register id 3
+        }
+        else {
+            opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param1)) << 4;
+        }
+        opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param2)) << 2;
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        if (std::ranges::contains(dwordRegisterNames, param3)) {
+            code[1] |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param3));
+            return code;
+        }
+        code[1] |= 3; // immediate value (register id 3)
+        uint32_t immediate;
+        if (u32_defines.contains(param3)) {
+            immediate = u32_defines[param3];
+        }
+        else if (labels_u16_defines.contains(param3)) {
+            immediate = labels_u16_defines[param3];
+        }
+        else if (u8_defines.contains(param3)) {
+            immediate = u8_defines[param3];
+        }
+        else {
+            immediate = readIntegerLiteral(param3);
+        }
+        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 16) & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 24) & 0xFF));
+        return code;
+    }
+    if (std::ranges::contains(floatRegisterNames, param2)) {
+        uint16_t opcode = targetSourceSourceFloatMap[instruction];
+        if (param1 == "dis") {
+            opcode |= 0x3 << 4; // discarding result by invalid register id 3
+        }
+        else {
+            opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param1)) << 4;
+        }
+        opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param2)) << 2;
+        std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
+        if (std::ranges::contains(floatRegisterNames, param3)) {
+            code[1] |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param3));
+            return code;
+        }
+        code[1] |= 3; // immediate value (register id 3)
+        float immediateValue;
+        if (f32_defines.contains(param3)) {
+            immediateValue = f32_defines[param3];
+        }
+        else {
+            immediateValue = std::stof(param3);
+        }
+        uint32_t immediate;
+        std::memcpy(&immediate, &immediateValue, sizeof(float));
+        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 16) & 0xFF));
+        code.push_back(static_cast<uint8_t>((immediate >> 24) & 0xFF));
+        return code;
+    }
+    throw std::runtime_error("Unknown instruction or parameter combination for three-parameter logic operation: " + instruction + " " + param1 + " " + param2 + " " + param3);
 }
