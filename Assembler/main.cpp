@@ -15,10 +15,10 @@ int main(int argc, char* argv[]) {
     try {
         Assembler assembler(inputFile);
         assembler.assemble(outputFile);
-        std::cout << "Assembly successful. Output written to " << outputFile;
+        std::cout << "Assembly successful. " << std::filesystem::file_size(outputFile) << " bytes written to " << outputFile << '\n';
     }
     catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what();
+        std::cerr << "Error: " << e.what() << '\n';
         return 1;
     }
 

@@ -19,7 +19,17 @@ void Assembler::assemble(const std::filesystem::path& outputFile) {
 
     std::string line;
     while (std::getline(in, line)) {
-        lines.push_back(line);
+        // remove comments and empty lines
+        auto semicolonPos = line.find(';');
+        if (semicolonPos != std::string::npos) {
+            line = line.substr(0, semicolonPos);
+        }
+        line.erase(line.begin(), std::find_if(line.begin(), line.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+        line.erase(std::find_if(line.rbegin(), line.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), line.end());
+
+        if (!line.empty()) {
+            lines.push_back(line);
+        }
     }
     in.close();
 
