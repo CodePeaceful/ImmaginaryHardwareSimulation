@@ -24,7 +24,6 @@ void Assembler::assemble(const std::filesystem::path& outputFile) {
         if (semicolonPos != std::string::npos) {
             line = line.substr(0, semicolonPos);
         }
-        line.erase(line.begin(), std::find_if(line.begin(), line.end(), [](unsigned char ch) { return !std::isspace(ch); }));
         line.erase(std::find_if(line.rbegin(), line.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), line.end());
 
         if (!line.empty()) {
@@ -173,7 +172,7 @@ uint32_t Assembler::getInstructionLength(const std::string& line) {
 
 uint32_t Assembler::getInstructionLengthNoParameters(const std::string& instruction) {
     if (noParameterMap.contains(instruction)) {
-        return noParameterMap[instruction];
+        return 2;
     }
     throw std::runtime_error("Unknown instruction with no parameters: " + instruction);
 }
@@ -207,7 +206,10 @@ uint32_t Assembler::getInstructionLengthTwoParameters(const std::string& instruc
     }
     if (param2[0] == '*') {
         param2 = param2.substr(1);
-        if (pointerMap.contains(instruction)) {
+        if ((std::ranges::contains(byteRegisterNames, param1) && targetPointer8bitMap.contains(instruction))
+            || (std::ranges::contains(wordRegisterNames, param1) && targetPointer16bitMap.contains(instruction))
+            || (std::ranges::contains(dwordRegisterNames, param1) && targetPointer32bitMap.contains(instruction))
+            || (std::ranges::contains(floatRegisterNames, param1) && targetPointerFloatMap.contains(instruction))) {
             return std::ranges::contains(wordRegisterNames, param2) ? 2 : 4;
         }
         throw std::runtime_error("Unknown instruction or parameter: " + instruction + " " + param1 + " " + param2);
@@ -222,7 +224,7 @@ uint32_t Assembler::getInstructionLengthTwoParameters(const std::string& instruc
         if (std::ranges::contains(dwordRegisterNames, param2) || std::ranges::contains(floatRegisterNames, param2)) {
             throw std::runtime_error("No instruction for byte to dword/float operation");
         }
-        if (targetSourceSource8bitMap.contains(instruction)) {
+        if (targetSource8bitMap.contains(instruction)) {
             return instruction == "cmp" && !std::ranges::contains(wordRegisterNames, param2) ? 4 : 2;
         }
         throw std::runtime_error("Unknown instruction for byte to byte operation: " + instruction);
@@ -243,7 +245,7 @@ uint32_t Assembler::getInstructionLengthTwoParameters(const std::string& instruc
         if (std::ranges::contains(floatRegisterNames, param2)) {
             throw std::runtime_error("No instruction for word to float operation");
         }
-        if (targetSourceSource16bitMap.contains(instruction)) {
+        if (targetSource16bitMap.contains(instruction)) {
             return std::ranges::contains(wordRegisterNames, param2) ? 2 : 4;
         }
         throw std::runtime_error("Unknown instruction for word to word operation: " + instruction);
@@ -264,7 +266,7 @@ uint32_t Assembler::getInstructionLengthTwoParameters(const std::string& instruc
             }
             throw std::runtime_error("Unknown instruction for dword to float operation: " + instruction);
         }
-        if (targetSourceSource32bitMap.contains(instruction)) {
+        if (targetSource32bitMap.contains(instruction)) {
             return std::ranges::contains(dwordRegisterNames, param2) ? 2 : 6;
         }
         throw std::runtime_error("Unknown instruction for dword to dword operation: " + instruction);
@@ -279,7 +281,7 @@ uint32_t Assembler::getInstructionLengthTwoParameters(const std::string& instruc
             }
             throw std::runtime_error("Unknown instruction for float to dword operation: " + instruction);
         }
-        if (targetSourceSourceFloatMap.contains(instruction)) {
+        if (targetSourceFloatMap.contains(instruction)) {
             return std::ranges::contains(floatRegisterNames, param2) ? 2 : 6;
         }
         throw std::runtime_error("Unknown instruction for float to float operation: " + instruction);
@@ -590,7 +592,16 @@ std::vector<uint8_t> Assembler::getInstructionCodeOneParameter(const std::string
         }
         // immediate value (register id 7)
         code[1] |= 7;
-        uint32_t immediate = readIntegerLiteral(param);
+        uint32_t immediate;
+        if (labels_u16_defines.contains(param)) {
+            immediate = labels_u16_defines[param];
+        }
+        else if (u8_defines.contains(param)) {
+            immediate = u8_defines[param];
+        }
+        else {
+            immediate = readIntegerLiteral(param);
+        }
         code.push_back(static_cast<uint8_t>(immediate & 0xFF));
         code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
         return code;

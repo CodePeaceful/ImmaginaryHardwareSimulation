@@ -1,0 +1,7 @@
+    .org 0x400 ; user executeble start point
+    xor A A A ; optimized set 0
+loop:
+    inc A
+    jnz *loop
+
+    stoP

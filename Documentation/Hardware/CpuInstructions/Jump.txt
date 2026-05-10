@@ -8,7 +8,7 @@ startProgram:   // kernel mode only: swiches to user mode sets stackpointer to 0
 segfault:       // user mode only: swiches to kernel mode // X register will be set to special values if instruction was set by hardware error
     0x4002
 
-stopProgram:    // user mode only: swiches to kernel mode informs the Kernel to free all related memory an release the PID
+stopProgram:    // user mode only: swiches to kernel mode informs the Kernel to free all related memory an release the PID  // in Kernel mode shuts down computer
     0x4003
 
 returnFromSubroutine:

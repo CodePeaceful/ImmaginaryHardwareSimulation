@@ -27,6 +27,9 @@ file handler is part of the Kernel but uses user mode Memory Mapping
 
 Interupt Flag is to be checked by user Programm and the handle Interupt syscal to be called when ready
 
+kernel binary starts at 0x0000 with the 3 jump adresses for handling segfault programStop and syscal
+boot execution starts at 0x0006
+
 result:
     16kiB Kernel Ram
     2MiB Programm Ram

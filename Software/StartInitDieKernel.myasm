@@ -1,0 +1,18 @@
+    .word die
+    .word die
+    .word die
+    load lA 1
+    store lA *0x7fff ; set pid to 1
+    load hA 0
+    load B 0x8000
+fill:
+    store hA *B
+    inc hA
+    inc B
+    cmp hA 3
+    jne *fill
+    
+    staP
+
+die:
+    stoP
