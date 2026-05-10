@@ -450,9 +450,10 @@ std::vector<uint8_t> Assembler::secondPass(const std::vector<std::string>& lines
                     currentAddress = getDotDirectiveNewAddress(line, currentAddress);
                     if (line.find(".page_start") != std::string::npos || line.find(".org") != std::string::npos) {
                         // fill with zeros until page offset aligned
-                        while (currentAddress & 0x1ff != pageOffset) {
+                        while (currentAddress % 512 != pageOffset) {
                             machineCode.push_back(0);
                             ++pageOffset;
+                            pageOffset %= 512;
                         }
                     }
                     // user defined data directives, read parameter and set values

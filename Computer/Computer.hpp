@@ -27,7 +27,7 @@ private:
     std::array<uint8_t, 6> currentInstruction;
     uint8_t instructionProgress{ };
 
-    // will always point at free lists
+    // check or set if invalid
     std::array<uint16_t, 256> memoryMapperCache;
 
     std::jthread inputThread;
@@ -47,6 +47,7 @@ private:
     void outputLoop();
 
     std::expected<uint8_t*, bool> userMapMemory(uint16_t userAdress);
+    bool updateMemoryMapperCache(uint8_t pid);
     void loadInstructionByte();
     void handleJump();
     void handleLogic();

@@ -17,6 +17,8 @@ constexpr uint16_t shutdownByteAdress = 0x6400;
 
 constexpr uint16_t activePidAdress = 0x7fff;
 constexpr uint16_t userMemoryMapStart = 0x4000;
+constexpr uint16_t userMemoryMapEnd = 0x5fff;
+constexpr uint16_t storageMapStart = 0x8000;
 constexpr uint8_t carryFlag = 0b0000'0001;
 constexpr uint8_t zeroFlag = 0b0000'0010;
 constexpr uint8_t interruptFlag = 0b0000'0100;
@@ -173,18 +175,87 @@ void Computer::outputLoop() {
     }
 }
 
-// FIXME: wrong for any space outside normal mapping zone
+
 std::expected<uint8_t*, bool> Computer::userMapMemory(uint16_t userAdress) {
     const uint8_t pid = kernelRam[activePidAdress];
-    auto activeFreeList = programRam[memoryMapperCache[pid]];
+    if (memoryMapperCache[pid] < userMemoryMapStart || memoryMapperCache[pid] >= userMemoryMapEnd) {
+        if (pid != 1) {
+            if (!updateMemoryMapperCache(pid)) {
+                return std::unexpected(false);
+            }
+        }
+        else {
+            if (memoryMapperCache[pid] < storageMapStart) {
+                if (!updateMemoryMapperCache(pid)) {
+                    return std::unexpected(false);
+                }
+            }
+        }
+    }
+    else if (memoryMapperCache[pid] >= userMemoryMapStart && memoryMapperCache[pid] < userMemoryMapEnd) {
+        if (kernelRam[memoryMapperCache[pid]] != pid || kernelRam[memoryMapperCache[pid] + 1] != 1) {
+            if (!updateMemoryMapperCache(pid)) {
+                return std::unexpected(false);
+            }
+        }
+    }
+    else {
+        if (kernelRam[memoryMapperCache[pid]] != 1) {
+            if (!updateMemoryMapperCache(pid)) {
+                return std::unexpected(false);
+            }
+        }
+    }
+    // owns nothing
+    MemoryBlock* activeFreeList;
+    if (memoryMapperCache[pid] >= userMemoryMapStart && memoryMapperCache[pid] < userMemoryMapEnd) {
+        activeFreeList = &programRam[(memoryMapperCache[pid] - userMemoryMapStart) / sizeof(MemoryBlock)];
+    }
+    else {
+        activeFreeList = &storage[(memoryMapperCache[pid] - storageMapStart) / sizeof(MemoryBlock)];
+    }
+
     const uint16_t shortAdress = userAdress % sizeof(MemoryBlock);
     const uint16_t blockAdress = userAdress / sizeof(MemoryBlock);
-    const uint16_t targetBlock = static_cast<uint16_t>(activeFreeList[blockAdress * 4]) + static_cast<uint16_t>(activeFreeList[blockAdress * 4]) << 8;
+    const uint16_t targetBlock = static_cast<uint16_t>((*activeFreeList)[blockAdress * 4]) + static_cast<uint16_t>((*activeFreeList)[blockAdress * 4 + 1]) << 8;
     // back check
-    if (!(kernelRam[blockAdress * 2 + userMemoryMapStart] == pid && kernelRam[blockAdress * 2 + userMemoryMapStart + 1] == static_cast<uint8_t>(blockAdress))) {
+    if (targetBlock < userMemoryMapStart) {
         return std::unexpected(false);
     }
-    return &programRam[blockAdress][shortAdress];
+    if (targetBlock > userMemoryMapEnd && targetBlock < storageMapStart) {
+        return std::unexpected(false);
+    }
+    if (targetBlock >= storageMapStart) {
+        if (pid != 1) {
+            return std::unexpected(false);
+        }
+        if (kernelRam[targetBlock] != static_cast<uint8_t>(blockAdress)) {
+            return std::unexpected(false);
+        }
+        return &storage[targetBlock - storageMapStart][shortAdress];
+    }
+    else if (!(kernelRam[targetBlock] == pid && kernelRam[targetBlock + 1] == static_cast<uint8_t>(blockAdress)) && targetBlock % 2 == 0) {
+        return std::unexpected(false);
+    }
+    return &programRam[(targetBlock - userMemoryMapStart) / 2][shortAdress];
+}
+
+bool Computer::updateMemoryMapperCache(uint8_t pid) {
+    for (uint16_t i = userMemoryMapStart; i < userMemoryMapEnd; i += 2) {
+        if (kernelRam[i] == pid && kernelRam[i + 1] == 1) {
+            memoryMapperCache[pid] = i;
+            return true;
+        }
+    }
+    if (pid == 1) {
+        for (uint16_t i = storageMapStart; i < storageMapStart + storage.size() * sizeof(MemoryBlock); i += sizeof(MemoryBlock)) {
+            if (kernelRam[i] == 1) {
+                memoryMapperCache[pid] = i;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void Computer::loadInstructionByte() {
@@ -1087,6 +1158,7 @@ void Computer::startProgram() {
         X = 0xFFFF'FFFE;
         return;
     }
+
     stackPointer = 0x0000;
     progCount = 0x0400;
     flags &= ~kernelModeFlag;
