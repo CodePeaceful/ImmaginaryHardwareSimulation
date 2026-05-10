@@ -30,8 +30,8 @@ private:
     // check or set if invalid
     std::array<uint16_t, 256> memoryMapperCache;
 
-    std::jthread inputThread;
-    std::jthread outputThread;
+    // std::jthread inputThread;
+    // std::jthread outputThread;
 
 public:
     Computer(const std::filesystem::path& kernelRomFile, const std::filesystem::path& storageFile);

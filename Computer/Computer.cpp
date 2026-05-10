@@ -69,8 +69,10 @@ Computer::Computer(const std::filesystem::path& kernelRomFile, const std::filesy
     for (auto& block : this->storage) {
         storage.read(reinterpret_cast<char*>(block.data()), block.size());
     }
-    inputThread = std::jthread(&Computer::inputLoop, this);
-    outputThread = std::jthread(&Computer::outputLoop, this);
+    // inputThread = std::jthread(&Computer::inputLoop, this);
+    // outputThread = std::jthread(&Computer::outputLoop, this);
+
+    reset();
 }
 
 void Computer::reset() {
@@ -374,7 +376,7 @@ void Computer::load8BitImmediate() {
 }
 
 void Computer::loadMultyByteImmediate() {
-    if (instructionProgress <= currentInstruction[1] & 0x08 ? 5 : 3) {
+    if (instructionProgress <= (currentInstruction[1] & 0x08 ? 5 : 3)) {
         loadInstructionByte();
         return;
     }
@@ -1177,8 +1179,7 @@ void Computer::executeSegfault() {
 
 void Computer::stopProgram() {
     if (flags & kernelModeFlag) {
-        // die
-        return;
+        throw std::runtime_error("shutdown");
     }
     progCount = handleStopProgramAdress;
     flags |= kernelModeFlag;
