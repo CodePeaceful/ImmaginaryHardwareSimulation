@@ -2086,6 +2086,40 @@ void Computer::singleRegisterLogic16bit() {
             }
             return result;
         },
+        // inc
+        [](uint16_t a, uint8_t& flags) {
+            uint16_t result = a + 1;
+            if (result == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (result & 0x8000) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
+            return result;
+        },
+        // dec
+        [](uint16_t a, uint8_t& flags) {
+            uint16_t result = a - 1;
+            if (result == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (result & 0x8000) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
+            return result;
+        },
         // not
         [](uint16_t a, uint8_t& flags) {
             uint16_t result = ~a;
@@ -2217,6 +2251,40 @@ void Computer::singleRegisterLogic32bit() {
             }
             return result;
         },
+        // inc
+        [](uint32_t a, uint8_t& flags) {
+            uint32_t result = a + 1;
+            if (result == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (result & 0x8000'0000) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
+            return result;
+        },
+        // dec
+        [](uint32_t a, uint8_t& flags) {
+            uint32_t result = a - 1;
+            if (result == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (result & 0x8000'0000) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
+            return result;
+        },
         // not
         [](uint32_t a, uint8_t& flags) {
             uint32_t result = ~a;
@@ -2340,6 +2408,40 @@ void Computer::singleRegisterLogic8bit() {
                 flags &= ~zeroFlag;
             }
             // no overflow flag for rotate operations
+            if (result & 0x80) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
+            return result;
+        },
+        // inc
+        [](uint8_t a, uint8_t& flags) {
+            uint8_t result = a + 1;
+            if (result == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            if (result & 0x80) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
+            return result;
+        },
+        // dec
+        [](uint8_t a, uint8_t& flags) {
+            uint8_t result = a - 1;
+            if (result == 0) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
             if (result & 0x80) {
                 flags |= negativeFlag;
             }
