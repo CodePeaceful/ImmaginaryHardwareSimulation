@@ -478,7 +478,7 @@ void Computer::handleMemoryLoad() {
             else {
                 flags &= ~negativeFlag;
             }
-            setI16RegisterById(currentInstruction[1] & 0x07, loadBuffer);
+            setI16RegisterById((currentInstruction[1] >> 3) & 0x07, loadBuffer);
             instructionProgress = 0;
             return;
         }
@@ -522,7 +522,7 @@ void Computer::handleMemoryLoad() {
             else {
                 flags &= ~negativeFlag;
             }
-            setI32RegisterById(currentInstruction[1] & 0x07, loadBuffer);
+            setI32RegisterById((currentInstruction[1] >> 3) & 0x03, loadBuffer);
             instructionProgress = 0;
             return;
         }
@@ -568,7 +568,7 @@ void Computer::handleMemoryLoad() {
             else {
                 flags &= ~negativeFlag;
             }
-            setF32RegisterById(currentInstruction[1] & 0x07, fValue);
+            setF32RegisterById((currentInstruction[1] >> 3) & 0x07, fValue);
             instructionProgress = 0;
             return;
         }
@@ -577,7 +577,7 @@ void Computer::handleMemoryLoad() {
         // 8 bit load
         uint8_t value;
         LOAD_MEMORY(value, adress);
-        setI8RegisterById(currentInstruction[1] & 0x07, value);
+        setI8RegisterById((currentInstruction[1] >> 3) & 0x0f, value);
         instructionProgress = 0;
         return;
     }
@@ -601,13 +601,13 @@ void Computer::handleMemoryStore() {
     if (currentInstruction[1] & 0xc0 == 0x00) {
         // 16 bit store
         if (instructionProgress == 2 + (isImmediate ? 2 : 0)) {
-            uint16_t value = getI16RegisterById(currentInstruction[1] & 0x07);
+            uint16_t value = getI16RegisterById((currentInstruction[1] >> 3) & 0x07);
             STORE_MEMORY(value & 0x00ff, adress);
             ++instructionProgress;
             return;
         }
         if (instructionProgress == 3 + (isImmediate ? 2 : 0)) {
-            uint16_t value = getI16RegisterById(currentInstruction[1] & 0x07);
+            uint16_t value = getI16RegisterById((currentInstruction[1] >> 3) & 0x07);
             value >>= 8;
             STORE_MEMORY(value & 0x00ff, adress + 1);
             instructionProgress = 0;
@@ -617,27 +617,27 @@ void Computer::handleMemoryStore() {
     if (currentInstruction[1] & 0xe0 == 0x40) {
         // 32 bit store
         if (instructionProgress == 2 + (isImmediate ? 2 : 0)) {
-            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value = getI32RegisterById((currentInstruction[1] >> 3) & 0x03);
             STORE_MEMORY(value & 0x00ff, adress);
             ++instructionProgress;
             return;
         }
         if (instructionProgress == 3 + (isImmediate ? 2 : 0)) {
-            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value = getI32RegisterById((currentInstruction[1] >> 3) & 0x03);
             value >>= 8;
             STORE_MEMORY(value & 0x00ff, adress + 1);
             ++instructionProgress;
             return;
         }
         if (instructionProgress == 4 + (isImmediate ? 2 : 0)) {
-            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value = getI32RegisterById((currentInstruction[1] >> 3) & 0x03);
             value >>= 16;
             STORE_MEMORY(value & 0x00ff, adress + 2);
             ++instructionProgress;
             return;
         }
         if (instructionProgress == 5 + (isImmediate ? 2 : 0)) {
-            uint32_t value = getI32RegisterById(currentInstruction[1] & 0x07);
+            uint32_t value = getI32RegisterById((currentInstruction[1] >> 3) & 0x03);
             value >>= 24;
             STORE_MEMORY(value & 0x00ff, adress + 3);
             instructionProgress = 0;
@@ -647,7 +647,7 @@ void Computer::handleMemoryStore() {
     if (currentInstruction[1] & 0xe0 == 0x60) {
         // float store
         if (instructionProgress == 2 + (isImmediate ? 2 : 0)) {
-            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            float fValue = getF32RegisterById((currentInstruction[1] >> 3) & 0x03);
             uint32_t value;
             std::memcpy(&value, &fValue, sizeof(float));
             STORE_MEMORY(value & 0x00ff, adress);
@@ -655,7 +655,7 @@ void Computer::handleMemoryStore() {
             return;
         }
         if (instructionProgress == 3 + (isImmediate ? 2 : 0)) {
-            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            float fValue = getF32RegisterById((currentInstruction[1] >> 3) & 0x03);
             uint32_t value;
             std::memcpy(&value, &fValue, sizeof(float));
             value >>= 8;
@@ -664,7 +664,7 @@ void Computer::handleMemoryStore() {
             return;
         }
         if (instructionProgress == 4 + (isImmediate ? 2 : 0)) {
-            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            float fValue = getF32RegisterById((currentInstruction[1] >> 3) & 0x03);
             uint32_t value;
             std::memcpy(&value, &fValue, sizeof(float));
             value >>= 16;
@@ -673,7 +673,7 @@ void Computer::handleMemoryStore() {
             return;
         }
         if (instructionProgress == 5 + (isImmediate ? 2 : 0)) {
-            float fValue = getF32RegisterById(currentInstruction[1] & 0x07);
+            float fValue = getF32RegisterById((currentInstruction[1] >> 3) & 0x03);
             uint32_t value;
             std::memcpy(&value, &fValue, sizeof(float));
             value >>= 24;
@@ -684,7 +684,7 @@ void Computer::handleMemoryStore() {
     }
     if (currentInstruction[1] & 0x80 == 0x80) {
         // 8 bit store
-        uint8_t value = getI8RegisterById(currentInstruction[1] & 0x07);
+        uint8_t value = getI8RegisterById((currentInstruction[1] >> 3) & 0x0f);
         STORE_MEMORY(value, adress);
         instructionProgress = 0;
         return;
@@ -1174,7 +1174,9 @@ void Computer::executeSegfault() {
     }
     progCount = handleSegfaultAdress;
     flags |= kernelModeFlag;
-    instructionProgress = 0;
+    instructionProgress = 2;
+    currentInstruction[0] = 0x40;
+    currentInstruction[1] = 0x17; // jump always to segfault handler
 }
 
 void Computer::stopProgram() {
@@ -1183,7 +1185,9 @@ void Computer::stopProgram() {
     }
     progCount = handleStopProgramAdress;
     flags |= kernelModeFlag;
-    instructionProgress = 0;
+    instructionProgress = 2;
+    currentInstruction[0] = 0x40;
+    currentInstruction[1] = 0x17; // jump always to stop program handler
 }
 
 void Computer::returnFromSubroutine() {
