@@ -219,6 +219,10 @@ std::expected<uint8_t*, bool> Computer::userMapMemory(uint16_t userAdress) {
     else {
         activeFreeList = &storage[(memoryMapperCache[pid] - storageMapStart) / sizeof(MemoryBlock)];
     }
+    // freelist check, if the block at the start of the freelist is not owned by the process then the process owns nothing and this is a segfault, this can happen if the process tries to access memory after it has been killed and its memory has been reallocated to another process
+    if (memoryMapperCache[pid] == kernelRam[static_cast<uint16_t>((*activeFreeList)[4]) + (static_cast<uint16_t>((*activeFreeList)[5]) << 8)]) {
+        return std::unexpected(false);
+    }
 
     const uint16_t shortAdress = userAdress % sizeof(MemoryBlock);
     const uint16_t blockAdress = userAdress / sizeof(MemoryBlock);
