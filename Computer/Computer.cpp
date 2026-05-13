@@ -303,6 +303,76 @@ void Computer::handleJump() {
         return;
     }
 
+    if (currentInstruction[1] >= 0xf0) {
+        bool newState = (currentInstruction[1] & 0x08) == 0x08;
+        uint8_t flagid = currentInstruction[1] & 0x07;
+        switch (flagid) {
+        case 0:
+            if (newState) {
+                flags |= carryFlag;
+            }
+            else {
+                flags &= ~carryFlag;
+            }
+            break;
+        case 1:
+            if (newState) {
+                flags |= zeroFlag;
+            }
+            else {
+                flags &= ~zeroFlag;
+            }
+            break;
+        case 2:
+            if (newState) {
+                // setting will only be done by hardware flags |= interruptFlag;
+            }
+            else {
+                flags &= ~interruptFlag;
+            }
+            break;
+        case 3:
+            if (newState) {
+                flags |= compareGreaterFlag;
+            }
+            else {
+                flags &= ~compareGreaterFlag;
+            }
+            break;
+        case 4:
+            if (newState) {
+                flags |= compareEqualFlag;
+            }
+            else {
+                flags &= ~compareEqualFlag;
+            }
+            break;
+        case 5:
+            // swiching in and out of kernel mode uses more comnplex instructions
+            break;
+        case 6:
+            if (newState) {
+                flags |= overflowFlag;
+            }
+            else {
+                flags &= ~overflowFlag;
+            }
+            break;
+        case 7:
+            if (newState) {
+                flags |= negativeFlag;
+            }
+            else {
+                flags &= ~negativeFlag;
+            }
+            break;
+        default:
+            std::unreachable();
+        }
+        instructionProgress = 0;
+        return;
+    }
+
     // jump conditions total instruction space enough for 29 conditions but only 14 used, maybe more in future adding more is only done by expanding the array
     static std::array<std::function<bool(uint8_t)>, 14> jumpReasons{
         // jump Always

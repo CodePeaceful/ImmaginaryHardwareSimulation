@@ -66,5 +66,18 @@ keywords:
         segf
         stoP
         rts
+        clc
+        stc
+        clz
+        stz
+        cli
+        clCG
+        stCG
+        clE
+        stE
+        clv
+        stv
+        cln
+        stn
 
 Immediate values as named adresses or C style literals

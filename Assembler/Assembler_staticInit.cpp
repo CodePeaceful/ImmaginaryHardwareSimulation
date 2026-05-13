@@ -175,7 +175,20 @@ std::map<std::string, uint16_t> Assembler::noParameterMap{
     {"staP", 0x4001},
     {"segf", 0x4002},
     {"stoP", 0x4003},
-    {"rts", 0x4004}
+    {"rts", 0x4004},
+    {"clc", 0x40f0},
+    {"stc", 0x40f8},
+    {"clz", 0x40f1},
+    {"stz", 0x40f9},
+    {"cli", 0x40f2},
+    {"clCE", 0x40f3},
+    {"stCE", 0x40fb},
+    {"clE", 0x40f4},
+    {"stE", 0x40fc},
+    {"clv", 0x40f6},
+    {"stv", 0x40fe},
+    {"cln", 0x40f7},
+    {"stn", 0x40ff}
 };
 
 std::array<std::string, 14> Assembler::byteRegisterNames{

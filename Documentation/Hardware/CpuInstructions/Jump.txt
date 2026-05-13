@@ -75,3 +75,7 @@ jumpNotNegative:
                 7               followed by Immediate
 
 
+
+Flag setters not for Kernel Interupt can only be cleared
+    0x40f0 | newFlagState << 3 | flagId
+
