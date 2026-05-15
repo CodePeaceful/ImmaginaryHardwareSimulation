@@ -41,10 +41,10 @@ private:
 
     static std::map<std::string, uint16_t> noParameterMap;
 
-    static std::array<std::string, 14> byteRegisterNames;
-    static std::array<std::string, 6> wordRegisterNames;
-    static std::array<std::string, 3> dwordRegisterNames;
-    static std::array<std::string, 3> floatRegisterNames;
+    static std::array<std::string, 16> byteRegisterNames;
+    static std::array<std::string, 8> wordRegisterNames;
+    static std::array<std::string, 4> dwordRegisterNames;
+    static std::array<std::string, 4> floatRegisterNames;
 
     std::map<std::string, uint8_t> u8_defines;
     std::map<std::string, uint16_t> labels_u16_defines;
@@ -58,6 +58,17 @@ public:
     void assemble(const std::filesystem::path& outputFile);
 
 private:
+    static std::vector<std::string> splitInstructionLine(const std::string& line);
+    uint8_t evaluate8bitExpression(const std::string& expression);
+    uint16_t evaluate16bitExpression(const std::string& expression);
+    uint32_t evaluate32bitExpression(const std::string& expression);
+    float evaluateFloatExpression(const std::string& expression);
+    static std::vector<std::string> splitExpression(const std::string& expression);
+    uint8_t get8bitValue(const std::string& val);
+    uint16_t get16bitValue(const std::string& val);
+    uint32_t get32bitValue(const std::string& val);
+    float getFloatValue(const std::string& val);
+
     void firstPass(const std::vector<std::string>& lines);
     static uint32_t getIndentedNewAddress(const std::string& line, uint32_t currentAddress);
     void handleCompileTimeLabel(const std::string& line, uint32_t currentAddress);

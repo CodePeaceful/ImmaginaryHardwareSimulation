@@ -46,6 +46,203 @@ void Assembler::assemble(const std::filesystem::path& outputFile) {
     outputFileStream.write(reinterpret_cast<const char*>(machineCode.data()), machineCode.size());
 }
 
+std::vector<std::string> Assembler::splitInstructionLine(const std::string& line) {
+    std::vector<std::string> tokens;
+    std::string token{ };
+    int openBracketCounter = 0;
+    for (size_t i = 0; i < line.size(); ++i) {
+        if (openBracketCounter > 0) {
+            token.push_back(line[i]);
+            if (line[i] == ')') {
+                --openBracketCounter;
+                if (openBracketCounter == 0) {
+                    tokens.push_back(token);
+                    token.clear();
+                }
+            }
+            else if (line[i] == '(') {
+                ++openBracketCounter;
+            }
+        }
+        else if (std::isspace(line[i])) {
+            if (!token.empty()) {
+                tokens.push_back(token);
+                token.clear();
+            }
+        }
+        else {
+            token.push_back(line[i]);
+            if (line[i] == '(') {
+                ++openBracketCounter;
+            }
+        }
+    }
+    return tokens;
+}
+
+uint8_t Assembler::evaluate8bitExpression(const std::string& expression) {
+    auto tokens = splitExpression(expression);
+    if (tokens.size() % 2 == 0) {
+        throw std::runtime_error("error reading expression: " + expression);
+    }
+    uint8_t value = get8bitValue(tokens[0]);
+    for (auto it = tokens.begin() + 1; it < tokens.end(); it += 2) {
+        uint8_t operand = get8bitValue(*(it + 1));
+        if (it->size() != 1) {
+            throw std::runtime_error("invalid operator: " + *it + " in expression: " + expression);
+        }
+        switch (it->at(0)) {
+        case '+':
+            value += operand;
+            break;
+        case '-':
+            value -= operand;
+            break;
+        case '|':
+            value |= operand;
+            break;
+        case '&':
+            value &= operand;
+            break;
+
+        default:
+            throw std::runtime_error("invalid operator: " + *it + " in expression: " + expression);
+        }
+    }
+    return value;
+}
+
+uint16_t Assembler::evaluate16bitExpression(const std::string& expression) {
+    auto tokens = splitExpression(expression);
+    if (tokens.size() % 2 == 0) {
+        throw std::runtime_error("error reading expression: " + expression);
+    }
+    uint16_t value = get16bitValue(tokens[0]);
+    for (auto it = tokens.begin() + 1; it < tokens.end(); it += 2) {
+        uint16_t operand = get16bitValue(*(it + 1));
+        if (it->size() != 1) {
+            throw std::runtime_error("invalid operator: " + *it + " in expression: " + expression);
+        }
+        switch (it->at(0)) {
+        case '+':
+            value += operand;
+            break;
+        case '-':
+            value -= operand;
+            break;
+        case '|':
+            value |= operand;
+            break;
+        case '&':
+            value &= operand;
+            break;
+
+        default:
+            throw std::runtime_error("invalid operator: " + *it + " in expression: " + expression);
+        }
+    }
+    return value;
+}
+
+uint32_t Assembler::evaluate32bitExpression(const std::string& expression) {
+    auto tokens = splitExpression(expression);
+    if (tokens.size() % 2 == 0) {
+        throw std::runtime_error("error reading expression: " + expression);
+    }
+    uint32_t value = get32bitValue(tokens[0]);
+    for (auto it = tokens.begin() + 1; it < tokens.end(); it += 2) {
+        uint32_t operand = get32bitValue(*(it + 1));
+        if (it->size() != 1) {
+            throw std::runtime_error("invalid operator: " + *it + " in expression: " + expression);
+        }
+        switch (it->at(0)) {
+        case '+':
+            value += operand;
+            break;
+        case '-':
+            value -= operand;
+            break;
+        case '|':
+            value |= operand;
+            break;
+        case '&':
+            value &= operand;
+            break;
+
+        default:
+            throw std::runtime_error("invalid operator: " + *it + " in expression: " + expression);
+        }
+    }
+    return value;
+}
+
+float Assembler::evaluateFloatExpression(const std::string& expression) {
+    auto tokens = splitExpression(expression);
+    if (tokens.size() % 2 == 0) {
+        throw std::runtime_error("error reading expression: " + expression);
+    }
+    float value = getFloatValue(tokens[0]);
+    for (auto it = tokens.begin() + 1; it < tokens.end(); it += 2) {
+        float operand = getFloatValue(*(it + 1));
+        if (it->size() != 1) {
+            throw std::runtime_error("invalid operator: " + *it + " in expression: " + expression);
+        }
+        switch (it->at(0)) {
+        case '+':
+            value += operand;
+            break;
+        case '-':
+            value -= operand;
+            break;
+
+        default:
+            throw std::runtime_error("invalid operator: " + *it + " in expression: " + expression);
+        }
+    }
+    return value;
+}
+
+std::vector<std::string> Assembler::splitExpression(const std::string& expression) {
+    std::vector<std::string> tokens;
+    std::string token{ };
+    int openBracketCounter = 0;
+    for (size_t i = 0; i < expression.size(); ++i) {
+        if (openBracketCounter > 0) {
+            token.push_back(expression[i]);
+            if (expression[i] == ')') {
+                --openBracketCounter;
+                if (openBracketCounter == 0) {
+                    tokens.push_back(token);
+                    token.clear();
+                }
+            }
+            else if (expression[i] == '(') {
+                ++openBracketCounter;
+            }
+        }
+        else if (std::isspace(expression[i])) {
+            if (!token.empty()) {
+                tokens.push_back(token);
+                token.clear();
+            }
+        }
+        else if (std::string{"+-|&"}.contains(expression[i])) {
+            if (!token.empty()) {
+                tokens.push_back(token);
+                token.clear();
+            }
+            tokens.push_back({expression[i]});
+        }
+        else {
+            token.push_back(expression[i]);
+            if (expression[i] == '(') {
+                ++openBracketCounter;
+            }
+        }
+    }
+    return tokens;
+}
+
 void Assembler::firstPass(const std::vector<std::string>& lines) {
     uint32_t currentAddress = 0;
     for (const auto& line : lines) {
@@ -133,16 +330,7 @@ void Assembler::handleCompileTimeLabel(const std::string& line, uint32_t current
 }
 
 uint32_t Assembler::getInstructionLength(const std::string& line) {
-    // split the line into tokens
-    std::istringstream iss(line);
-    std::vector<std::string> tokens{std::istream_iterator<std::string>{iss}, std::istream_iterator<std::string>{}};
-    // remove everything after ; (comment)
-    auto semicolonPos = line.find(';');
-    if (semicolonPos != std::string::npos) {
-        std::string codePart = line.substr(0, semicolonPos);
-        std::istringstream codeIss(codePart);
-        tokens = {std::istream_iterator<std::string>{codeIss}, std::istream_iterator<std::string>{}};
-    }
+    std::vector<std::string> tokens = splitInstructionLine(line);
 
     if (tokens.empty()) {
         return 0;
@@ -460,47 +648,20 @@ std::vector<uint8_t> Assembler::secondPass(const std::vector<std::string>& lines
                     else if (line.find(".byte") != std::string::npos) {
                         std::string valueStr = line.substr(line.find(".byte") + 5);
                         valueStr.erase(std::remove_if(valueStr.begin(), valueStr.end(), ::isspace), valueStr.end());
-                        uint8_t value;
-                        if (u8_defines.contains(valueStr)) {
-                            value = u8_defines[valueStr];
-                        }
-                        else {
-                            value = static_cast<uint8_t>(readIntegerLiteral(valueStr));
-                        }
+                        uint8_t value = get8bitValue(valueStr);
                         machineCode.push_back(value);
                     }
                     else if (line.find(".word") != std::string::npos) {
                         std::string valueStr = line.substr(line.find(".word") + 5);
                         valueStr.erase(std::remove_if(valueStr.begin(), valueStr.end(), ::isspace), valueStr.end());
-                        uint16_t value;
-                        if (labels_u16_defines.contains(valueStr)) {
-                            value = labels_u16_defines[valueStr];
-                        }
-                        else if (u8_defines.contains(valueStr)) {
-                            value = u8_defines[valueStr];
-                        }
-                        else {
-                            value = static_cast<uint16_t>(readIntegerLiteral(valueStr));
-                        }
+                        uint16_t value = get16bitValue(valueStr);
                         machineCode.push_back(value & 0xff);
                         machineCode.push_back((value >> 8) & 0xff);
                     }
                     else if (line.find(".dword") != std::string::npos) {
                         std::string valueStr = line.substr(line.find(".dword") + 5);
                         valueStr.erase(std::remove_if(valueStr.begin(), valueStr.end(), ::isspace), valueStr.end());
-                        uint32_t value;
-                        if (u32_defines.contains(valueStr)) {
-                            value = u32_defines[valueStr];
-                        }
-                        else if (labels_u16_defines.contains(valueStr)) {
-                            value = labels_u16_defines[valueStr];
-                        }
-                        else if (u8_defines.contains(valueStr)) {
-                            value = u8_defines[valueStr];
-                        }
-                        else {
-                            value = static_cast<uint32_t>(readIntegerLiteral(valueStr));
-                        }
+                        uint32_t value = get32bitValue(valueStr);
                         machineCode.push_back(value & 0xff);
                         machineCode.push_back((value >> 8) & 0xff);
                         machineCode.push_back((value >> 16) & 0xff);
@@ -509,14 +670,7 @@ std::vector<uint8_t> Assembler::secondPass(const std::vector<std::string>& lines
                     else if (line.find(".float") != std::string::npos) {
                         std::string valueStr = line.substr(line.find(".float") + 6);
                         valueStr.erase(std::remove_if(valueStr.begin(), valueStr.end(), ::isspace), valueStr.end());
-                        float value;
-                        if (f32_defines.contains(valueStr)) {
-                            value = f32_defines[valueStr];
-                        }
-                        else {
-                            value = static_cast<float>(std::stof(valueStr));
-                        }
-                        // Convert float to bytes (assuming IEEE 754 format)
+                        float value = getFloatValue(valueStr);
                         uint32_t floatAsInt;
                         std::memcpy(&floatAsInt, &value, sizeof(float));
                         machineCode.push_back(floatAsInt & 0xff);
@@ -539,16 +693,7 @@ std::vector<uint8_t> Assembler::secondPass(const std::vector<std::string>& lines
 }
 
 std::vector<uint8_t> Assembler::generateMachineCodeForInstruction(const std::string& line) {
-    // split the line into tokens
-    std::istringstream iss(line);
-    std::vector<std::string> tokens{std::istream_iterator<std::string>{iss}, std::istream_iterator<std::string>{}};
-    // remove everything after ; (comment)
-    auto semicolonPos = line.find(';');
-    if (semicolonPos != std::string::npos) {
-        std::string codePart = line.substr(0, semicolonPos);
-        std::istringstream codeIss(codePart);
-        tokens = {std::istream_iterator<std::string>{codeIss}, std::istream_iterator<std::string>{}};
-    }
+    std::vector<std::string> tokens = splitInstructionLine(line);
 
     if (tokens.empty()) {
         return { };
@@ -593,16 +738,7 @@ std::vector<uint8_t> Assembler::getInstructionCodeOneParameter(const std::string
         }
         // immediate value (register id 7)
         code[1] |= 7;
-        uint32_t immediate;
-        if (labels_u16_defines.contains(param)) {
-            immediate = labels_u16_defines[param];
-        }
-        else if (u8_defines.contains(param)) {
-            immediate = u8_defines[param];
-        }
-        else {
-            immediate = readIntegerLiteral(param);
-        }
+        uint16_t immediate = get16bitValue(param);
         code.push_back(static_cast<uint8_t>(immediate & 0xFF));
         code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
         return code;
@@ -661,14 +797,8 @@ std::vector<uint8_t> Assembler::getInstructionCodeTwoParameters(const std::strin
             return code;
         }
         code[1] |= 7; // immediate value (register id 7)
-        uint32_t immediate;
-        if (u8_defines.contains(param2)) {
-            immediate = u8_defines[param2];
-        }
-        else {
-            immediate = readIntegerLiteral(param2);
-        }
-        code.push_back(static_cast<uint8_t>(immediate & 0xFF));
+        uint8_t immediate = get8bitValue(param2);
+        code.push_back(immediate);
         code.push_back(static_cast<uint8_t>(0)); // padding for uniform instruction length
         return code;
     }
@@ -681,16 +811,7 @@ std::vector<uint8_t> Assembler::getInstructionCodeTwoParameters(const std::strin
             return code;
         }
         code[1] |= 7; // immediate value (register id 7)
-        uint32_t immediate;
-        if (labels_u16_defines.contains(param2)) {
-            immediate = labels_u16_defines[param2];
-        }
-        else if (u8_defines.contains(param2)) {
-            immediate = u8_defines[param2];
-        }
-        else {
-            immediate = readIntegerLiteral(param2);
-        }
+        uint16_t immediate = get16bitValue(param2);
         code.push_back(static_cast<uint8_t>(immediate & 0xFF));
         code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
         return code;
@@ -704,19 +825,7 @@ std::vector<uint8_t> Assembler::getInstructionCodeTwoParameters(const std::strin
             return code;
         }
         code[1] |= 3; // immediate value (register id 7)
-        uint32_t immediate;
-        if (u32_defines.contains(param2)) {
-            immediate = u32_defines[param2];
-        }
-        else if (labels_u16_defines.contains(param2)) {
-            immediate = labels_u16_defines[param2];
-        }
-        else if (u8_defines.contains(param2)) {
-            immediate = u8_defines[param2];
-        }
-        else {
-            immediate = readIntegerLiteral(param2);
-        }
+        uint32_t immediate = get32bitValue(param2);
         code.push_back(static_cast<uint8_t>(immediate & 0xFF));
         code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
         code.push_back(static_cast<uint8_t>((immediate >> 16) & 0xFF));
@@ -732,13 +841,7 @@ std::vector<uint8_t> Assembler::getInstructionCodeTwoParameters(const std::strin
             return code;
         }
         code[1] |= 3; // immediate value (register id 7)
-        float immediateValue;
-        if (f32_defines.contains(param2)) {
-            immediateValue = f32_defines[param2];
-        }
-        else {
-            immediateValue = std::stof(param2);
-        }
+        float immediateValue = getFloatValue(param2);
         uint32_t immediate;
         std::memcpy(&immediate, &immediateValue, sizeof(float));
         code.push_back(static_cast<uint8_t>(immediate & 0xFF));
@@ -792,16 +895,7 @@ std::vector<uint8_t> Assembler::getInstuctionCodeTargetPointer(const std::string
     else {
         // immediate value (register id 7)
         code[1] |= 7;
-        uint32_t immediate;
-        if (labels_u16_defines.contains(param2)) {
-            immediate = labels_u16_defines[param2];
-        }
-        else if (u8_defines.contains(param2)) {
-            immediate = u8_defines[param2];
-        }
-        else {
-            immediate = readIntegerLiteral(param2);
-        }
+        uint16_t immediate = get16bitValue(param2);
         code.push_back(static_cast<uint8_t>(immediate & 0xFF));
         code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
     }
@@ -883,61 +977,28 @@ std::vector<uint8_t> Assembler::getInstructionCodeLoadImmediate(const std::strin
     if (std::ranges::contains(byteRegisterNames, param1)) {
         uint8_t opcode = 0x00; // load immediate to byte
         opcode |= std::distance(byteRegisterNames.begin(), std::ranges::find(byteRegisterNames, param1));
-        uint32_t immediate;
-        if (u8_defines.contains(param2)) {
-            immediate = u8_defines[param2];
-        }
-        else {
-            immediate = readIntegerLiteral(param2);
-        }
-        std::vector<uint8_t> code{opcode, static_cast<uint8_t>(immediate & 0xFF)};
+        uint8_t immediate = get8bitValue(param2);
+        std::vector<uint8_t> code{opcode, immediate};
         return code;
     }
     if (std::ranges::contains(wordRegisterNames, param1)) {
         uint16_t opcode = 0x2000; // load immediate to word
         opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, param1));
-        uint32_t immediate;
-        if (labels_u16_defines.contains(param2)) {
-            immediate = labels_u16_defines[param2];
-        }
-        else if (u8_defines.contains(param2)) {
-            immediate = u8_defines[param2];
-        }
-        else {
-            immediate = readIntegerLiteral(param2);
-        }
+        uint16_t immediate = get16bitValue(param2);
         std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF), static_cast<uint8_t>(immediate & 0xFF), static_cast<uint8_t>((immediate >> 8) & 0xFF)};
         return code;
     }
     if (std::ranges::contains(dwordRegisterNames, param1)) {
         uint16_t opcode = 0x2008; // load immediate to dword
         opcode |= std::distance(dwordRegisterNames.begin(), std::ranges::find(dwordRegisterNames, param1));
-        uint32_t immediate;
-        if (u32_defines.contains(param2)) {
-            immediate = u32_defines[param2];
-        }
-        else if (labels_u16_defines.contains(param2)) {
-            immediate = labels_u16_defines[param2];
-        }
-        else if (u8_defines.contains(param2)) {
-            immediate = u8_defines[param2];
-        }
-        else {
-            immediate = readIntegerLiteral(param2);
-        }
+        uint32_t immediate = get32bitValue(param2);
         std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF), static_cast<uint8_t>(immediate & 0xFF), static_cast<uint8_t>((immediate >> 8) & 0xFF), static_cast<uint8_t>((immediate >> 16) & 0xFF), static_cast<uint8_t>((immediate >> 24) & 0xFF)};
         return code;
     }
     if (std::ranges::contains(floatRegisterNames, param1)) {
         uint16_t opcode = 0x200c; // load immediate to float
         opcode |= std::distance(floatRegisterNames.begin(), std::ranges::find(floatRegisterNames, param1));
-        float immediateValue;
-        if (f32_defines.contains(param2)) {
-            immediateValue = f32_defines[param2];
-        }
-        else {
-            immediateValue = std::stof(param2);
-        }
+        float immediateValue = getFloatValue(param2);
         uint32_t immediate;
         std::memcpy(&immediate, &immediateValue, sizeof(float));
         std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF), static_cast<uint8_t>(immediate & 0xFF), static_cast<uint8_t>((immediate >> 8) & 0xFF), static_cast<uint8_t>((immediate >> 16) & 0xFF), static_cast<uint8_t>((immediate >> 24) & 0xFF)};
@@ -984,30 +1045,14 @@ std::vector<uint8_t> Assembler::getInstructionCodeLoadStoreOffset(const std::str
     }
     else {
         opcode |= 7 << 3; // immediate value (register id 7)
-        if (labels_u16_defines.contains(pointerParam)) {
-            immediate = labels_u16_defines[pointerParam];
-        }
-        else if (u8_defines.contains(pointerParam)) {
-            immediate = u8_defines[pointerParam];
-        }
-        else {
-            immediate = std::stoul(pointerParam);
-        }
+        immediate = get16bitValue(pointerParam);
     }
     if (std::ranges::contains(wordRegisterNames, offsetParam)) {
         opcode |= std::distance(wordRegisterNames.begin(), std::ranges::find(wordRegisterNames, offsetParam));
     }
     else {
         opcode |= 7; // immediate value (register id 7)
-        if (labels_u16_defines.contains(offsetParam)) {
-            immediate = labels_u16_defines[offsetParam];
-        }
-        else if (u8_defines.contains(offsetParam)) {
-            immediate = u8_defines[offsetParam];
-        }
-        else {
-            immediate = std::stoul(offsetParam);
-        }
+        immediate = get16bitValue(offsetParam);
     }
     std::vector<uint8_t> code{static_cast<uint8_t>((opcode >> 8) & 0xFF), static_cast<uint8_t>(opcode & 0xFF)};
     if (immediate.has_value()) {
@@ -1034,14 +1079,8 @@ std::vector<uint8_t> Assembler::getInstructionCodeThreeParamLogic(const std::str
         }
         else {
             params |= 7 << 8; // immediate value (register id 7)
-            uint32_t immediate;
-            if (u8_defines.contains(param3)) {
-                immediate = u8_defines[param3];
-            }
-            else {
-                immediate = readIntegerLiteral(param3);
-            }
-            params |= immediate & 0xFF;
+            uint8_t immediate = get8bitValue(param3);
+            params |= immediate;
         }
         code.push_back(static_cast<uint8_t>((params >> 8) & 0xFF));
         code.push_back(static_cast<uint8_t>(params & 0xFF));
@@ -1062,16 +1101,7 @@ std::vector<uint8_t> Assembler::getInstructionCodeThreeParamLogic(const std::str
             return code;
         }
         code[1] |= 7; // immediate value (register id 7)
-        uint32_t immediate;
-        if (labels_u16_defines.contains(param3)) {
-            immediate = labels_u16_defines[param3];
-        }
-        else if (u8_defines.contains(param3)) {
-            immediate = u8_defines[param3];
-        }
-        else {
-            immediate = readIntegerLiteral(param3);
-        }
+        uint16_t immediate = get16bitValue(param3);
         code.push_back(static_cast<uint8_t>(immediate & 0xFF));
         code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
         return code;
@@ -1091,19 +1121,7 @@ std::vector<uint8_t> Assembler::getInstructionCodeThreeParamLogic(const std::str
             return code;
         }
         code[1] |= 3; // immediate value (register id 3)
-        uint32_t immediate;
-        if (u32_defines.contains(param3)) {
-            immediate = u32_defines[param3];
-        }
-        else if (labels_u16_defines.contains(param3)) {
-            immediate = labels_u16_defines[param3];
-        }
-        else if (u8_defines.contains(param3)) {
-            immediate = u8_defines[param3];
-        }
-        else {
-            immediate = readIntegerLiteral(param3);
-        }
+        uint32_t immediate = get32bitValue(param3);
         code.push_back(static_cast<uint8_t>(immediate & 0xFF));
         code.push_back(static_cast<uint8_t>((immediate >> 8) & 0xFF));
         code.push_back(static_cast<uint8_t>((immediate >> 16) & 0xFF));
@@ -1125,13 +1143,7 @@ std::vector<uint8_t> Assembler::getInstructionCodeThreeParamLogic(const std::str
             return code;
         }
         code[1] |= 3; // immediate value (register id 3)
-        float immediateValue;
-        if (f32_defines.contains(param3)) {
-            immediateValue = f32_defines[param3];
-        }
-        else {
-            immediateValue = std::stof(param3);
-        }
+        float immediateValue = getFloatValue(param3);
         uint32_t immediate;
         std::memcpy(&immediate, &immediateValue, sizeof(float));
         code.push_back(static_cast<uint8_t>(immediate & 0xFF));
@@ -1141,4 +1153,53 @@ std::vector<uint8_t> Assembler::getInstructionCodeThreeParamLogic(const std::str
         return code;
     }
     throw std::runtime_error("Unknown instruction or parameter combination for three-parameter logic operation: " + instruction + " " + param1 + " " + param2 + " " + param3);
+}
+
+uint8_t Assembler::get8bitValue(const std::string& val) {
+    if (val[0] == '(') {
+        return evaluate8bitExpression(val);
+    }
+    if (u8_defines.contains(val)) {
+        return u8_defines[val];
+    }
+    return readIntegerLiteral(val);
+}
+
+uint16_t Assembler::get16bitValue(const std::string& val) {
+    if (val[0] == '(') {
+        return evaluate16bitExpression(val);
+    }
+    if (labels_u16_defines.contains(val)) {
+        return labels_u16_defines[val];
+    }
+    if (u8_defines.contains(val)) {
+        return u8_defines[val];
+    }
+    return readIntegerLiteral(val);
+}
+
+uint32_t Assembler::get32bitValue(const std::string& val) {
+    if (val[0] == '(') {
+        return evaluate32bitExpression(val);
+    }
+    if (u32_defines.contains(val)) {
+        return u32_defines[val];
+    }
+    if (labels_u16_defines.contains(val)) {
+        return labels_u16_defines[val];
+    }
+    if (u8_defines.contains(val)) {
+        return u8_defines[val];
+    }
+    return readIntegerLiteral(val);
+}
+
+float Assembler::getFloatValue(const std::string& val) {
+    if (val[0] == '(') {
+        return evaluateFloatExpression(val);
+    }
+    if (f32_defines.contains(val)) {
+        return f32_defines[val];
+    }
+    return std::stof(val);
 }

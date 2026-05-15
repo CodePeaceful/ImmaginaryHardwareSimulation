@@ -13,6 +13,13 @@ Register names:
         fA, fB, fC
 
     dis     for discarding any result (only 3 param alu otherwise it would be ambigous witch bytesize)
+    dis8
+    dis16
+    dis32
+    disFloat
+        // for other discarding
+
+    add operator + - & | (no operator precedence just left to right and brackets) (full operation in ())
 
 keywords:
     3 parameter: target_register source_register <source_register | Immediate>

@@ -191,18 +191,18 @@ std::map<std::string, uint16_t> Assembler::noParameterMap{
     {"stn", 0x40ff}
 };
 
-std::array<std::string, 14> Assembler::byteRegisterNames{
-    "lA", "lB", "lC", "lD", "lE", "lG", "", "", "hA", "hB", "hC", "hD", "hE", "hG"
+std::array<std::string, 16> Assembler::byteRegisterNames{
+    "lA", "lB", "lC", "lD", "lE", "lG", "", "", "hA", "hB", "hC", "hD", "hE", "hG", "", "dis8"
 };
 
-std::array<std::string, 6> Assembler::wordRegisterNames{
-    "A", "B", "C", "D", "E", "G"
+std::array<std::string, 8> Assembler::wordRegisterNames{
+    "A", "B", "C", "D", "E", "G", "SP", "dis16"
 };
 
-std::array<std::string, 3> Assembler::dwordRegisterNames{
-    "X", "Y", "Z"
+std::array<std::string, 4> Assembler::dwordRegisterNames{
+    "X", "Y", "Z", "dis32"
 };
 
-std::array<std::string, 3> Assembler::floatRegisterNames{
-    "fA", "fB", "fC"
+std::array<std::string, 4> Assembler::floatRegisterNames{
+    "fA", "fB", "fC", "disFloat"
 };
