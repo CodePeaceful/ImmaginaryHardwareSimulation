@@ -77,6 +77,9 @@ std::vector<std::string> Assembler::splitInstructionLine(const std::string& line
             }
         }
     }
+    if (!token.empty()) {
+        tokens.push_back(token);
+    }
     return tokens;
 }
 
@@ -240,6 +243,9 @@ std::vector<std::string> Assembler::splitExpression(const std::string& expressio
             }
         }
     }
+    if (!token.empty()) {
+        tokens.push_back(token);
+    }
     return tokens;
 }
 
@@ -289,11 +295,11 @@ void Assembler::handleCompileTimeLabel(const std::string& line, uint32_t current
         if (u8_defines.contains(label) || labels_u16_defines.contains(label) || u32_defines.contains(label) || f32_defines.contains(label)) {
             throw std::runtime_error("Duplicate define: " + label);
         }
+        trim(valueStr);
+        trim(label);
         if (label.empty() || !std::isalpha(label[0]) || !std::all_of(label.begin(), label.end(), [](char c) { return std::isalnum(c) || c == '_'; })) {
             throw std::runtime_error("Invalid define name: " + label);
         }
-        trim(valueStr);
-        trim(label);
         // is it binary, hex, decimal or float?
         if (valueStr.find('.') != std::string::npos) {
             f32_defines[label] = std::stof(valueStr);

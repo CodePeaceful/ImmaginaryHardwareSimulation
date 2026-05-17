@@ -654,6 +654,18 @@ void Computer::handleMemoryLoad() {
         // 8 bit load
         uint8_t value;
         LOAD_MEMORY(value, adress);
+        if (value == 0) {
+            flags |= zeroFlag;
+        }
+        else {
+            flags &= ~zeroFlag;
+        }
+        if (value & 0x80) {
+            flags |= negativeFlag;
+        }
+        else {
+            flags &= ~negativeFlag;
+        }
         setI8RegisterById((currentInstruction[1] >> 3) & 0x0f, value);
         instructionProgress = 0;
         return;

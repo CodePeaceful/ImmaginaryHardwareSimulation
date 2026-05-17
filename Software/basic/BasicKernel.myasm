@@ -1,0 +1,103 @@
+pid = 0x7fff
+fileManagerPages = 3 ; this needs to be set based on the file loader
+
+    .word stopP
+    .word stopP
+    .word syscall
+
+    load SP 0x4000
+    load lA 1
+    store lA *pid
+    push lA
+
+    load A 1
+    store A *0x4000
+
+    load B 0x8000
+fileManagerLoadLoop:
+    store A *B
+    cmp A fileManagerPages
+    inc A
+    inc B
+    jl *fileManagerLoadLoop
+
+    store SP *memStart
+    load A 0x4002
+    store A *(memStart + 2)
+
+    staP
+
+syscall:
+    shl A
+    load A *A syscallJumpTable
+    jmp *A
+
+getMemoryBlock: ; endless loop on all memory used
+    load C *(memStart + 2)
+getMemoryBlockSearch:
+    load lD *C
+    jz *giveMemoryBlock
+    add C C 2
+    and C C 0x5FFE
+    jmp *getMemoryBlockSearch
+
+freeMemoryBlock:
+    store dis16 *B
+    load A 0xFFFF
+    sysc
+
+startProgramm:
+
+fileManagerCom:
+
+
+
+giveMemoryBlock:
+    add D C 2
+    and D D 0x5FFE
+    load hB *pid
+    store B *C
+    load hB 0
+    sysc
+
+
+stopP:
+    load SP *memStart
+    pop lA
+    cmp lA 1
+    jne *closeProgram
+    stoP    ; stopping the file manager signals the system to shutdown
+
+closeProgram:
+    jsr *freeAll
+    load lA *SP
+    store lA *pid
+    move A dis16
+    store SP *memStart
+    sysc
+
+
+freeAll: ; param lA pidToFree
+    load B 0x4000
+    clc
+freeAllLoop:
+    load hA *B
+    cmp lA hA
+    jne *freeAllLoopNext
+    store dis16 *B
+freeAllLoopNext:
+    add B B 2
+    cmp B 0x6000
+    jne *freeAllLoop
+    rts
+
+syscallJumpTable:
+    .word getMemoryBlock
+    .word freeMemoryBlock
+    .word startProgramm
+    .word fileManagerCom
+
+
+memStart: ; this label is the last line of assembly so the code has a point where runtime memory starts
+    ; SP chache
+    ; current free point

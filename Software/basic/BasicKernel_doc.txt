@@ -1,0 +1,11 @@
+syscalls: // to kernel given by A register
+    0   getMemoryBlock | param B memory block id      // awnser: giveMemoryBlock    protected E G
+    1   freeMemoryBlock | param B kernelBlockAdress                                 protected 
+    2   startProgramm | param B filePathlenght C + D , E + G , X , Y , Z filePathSegemnts       // awnser: A newPid
+    3   fileManagerCom | ???
+
+
+commonAwnsers: // from kernel given by A register
+    0   giveMemoryBlock | param B memory block id C kernelBlockAdress 
+
+    0xffff done
